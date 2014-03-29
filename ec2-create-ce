@@ -287,6 +287,18 @@ Instance type:    $INSTANCE_TYPE
 NGCP version:     $NGCP_VERSION
 *** End of Status report ***"
 
+# Jenkins setup specific
+TESTHOST="$HOSTNAME"
+case "$NGCP_RELEASE" in
+  latest)
+    VMVERSION="trunk"
+    ;;
+
+  *)
+    VMVERSION="${NGCP_RELEASE}"
+    ;;
+esac
+
 # generate report for usage in other scripts
 cat > ec2_report.txt << EOF
 instance_hostname=$HOSTNAME
@@ -298,6 +310,10 @@ ami_description=$AMI_DESCRIPTION
 ami_public=$_opt_public
 ami_instance_type=$INSTANCE_TYPE
 ngcp_version=$NGCP_VERSION
+
+# for usage in Jenkins
+test_host=$TESTHOST
+vmversion=$VMVERSION
 EOF
 
 rm -f "$USER_DATA_FILE" "$LOGFILE_RUN" "$LOGFILE_AMI"
