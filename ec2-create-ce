@@ -36,12 +36,14 @@ Supported OPTIONS:
                             (if unset defaults to <latest>)
   --public                  Make AMI available to the public
                             (if unset defaults to private)
+  --remove-existing-ami     If an AMI with the according name already exists get
+                            rid of it before trying to creating the AMI
   --region <REGION>         specify region that should be used
                             (if unset defaults to the eu-west-1 zone)
 "
 }
 
-CMDLINE_OPTS=base-ami:,help,instance-type:,ngcp-release:,public,region:
+CMDLINE_OPTS=base-ami:,help,instance-type:,ngcp-release:,public,region:,remove-existing-ami
 
 _opt_temp=$(getopt --name $0 -o +bch --long $CMDLINE_OPTS -- "$@")
 if [ $? -ne 0 ]; then
@@ -51,6 +53,7 @@ fi
 eval set -- "$_opt_temp"
 
 _opt_public=false
+_opt_remove_existing_ami=false
 
 while :; do
   case "$1" in
@@ -71,6 +74,9 @@ while :; do
     ;;
   --region)
     shift; AWS_REGION="$1"
+    ;;
+  --remove-existing-ami)
+    _opt_remove_existing_ami=true
     ;;
   --)
     shift; break
@@ -207,6 +213,18 @@ if [ "$FINISHED_NGCP_CE_INSTALLATION" = "true" ] ; then
 else
   echo "No further retries left and couldn't finish ngcp CE installation (version ${NGCP_VERSION}), giving up." >&2
   exit 1
+fi
+
+if ec2-describe-images --region "$AWS_REGION" --filter "name=${AMI_NAME}" | grep -q . ; then
+  echo "*** Warning, AMI with name ${AMI_NAME} exists already."
+  if $_opt_remove_existing_ami ; then
+    echo "*** Option --remove-existing-ami is set, removing existing AMI with name ${AMI_NAME} ***"
+    ec2-deregister --region "$AWS_REGION" "${AMI_NAME}"
+    if [ $? -ne 0 ] ; then
+      echo "Noticed problem when trying to delete AMI with name ${AMI_NAME}." >&2
+      exit 1
+    fi
+  fi
 fi
 
 LOGFILE_AMI=$(mktemp)
