@@ -15,6 +15,8 @@ if [ -r "$HOME/.ec2-create-ngcp" ] ; then
   source  "$HOME/.ec2-create-ngcp"
 fi
 
+rm -f ec2_report.txt
+
 usage() {
   echo "$0 - script to generate EC2 AMI for sip:provider ngcp CE
 
