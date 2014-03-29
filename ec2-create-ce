@@ -32,12 +32,14 @@ Supported OPTIONS:
                             (if unset defaults to m1.medium)
   --ngcp-release <VERSION>  sip:provider release version
                             (if unset defaults to <latest>)
+  --public                  Make AMI available to the public
+                            (if unset defaults to private)
   --region <REGION>         specify region that should be used
                             (if unset defaults to the eu-west-1 zone)
 "
 }
 
-CMDLINE_OPTS=base-ami:,help,instance-type:,ngcp-release:,region:
+CMDLINE_OPTS=base-ami:,help,instance-type:,ngcp-release:,public,region:
 
 _opt_temp=$(getopt --name $0 -o +bch --long $CMDLINE_OPTS -- "$@")
 if [ $? -ne 0 ]; then
@@ -45,6 +47,8 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 eval set -- "$_opt_temp"
+
+_opt_public=false
 
 while :; do
   case "$1" in
@@ -59,6 +63,9 @@ while :; do
     ;;
   --ngcp-release)
     shift; NGCP_RELEASE="$1"
+    ;;
+  --public)
+    _opt_public=true
     ;;
   --region)
     shift; AWS_REGION="$1"
@@ -208,6 +215,15 @@ else
   echo "Error creating AMI :(" >&2
   cat "$LOGFILE_AMI" >&2
   exit 1
+fi
+
+if $_opt_public ; then
+  echo "Marking AMI as public"
+  ec2-modify-image-attribute "$AMI-ID" --launch-permission -a all
+  if [ $? -ne 0 ] ; then
+    echo "Noticed problem when trying to mark AMI with ID $AMI_ID as public." >&2
+    exit 1
+  fi
 fi
 
 echo "*** Debugging information ***"
