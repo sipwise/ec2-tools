@@ -22,10 +22,11 @@ Supported OPTIONS:
   --help                    display this help text
   --region <REGION>         specify region that should be used
                             (if unset defaults to the eu-west-1 zone)
+  --terminate               terminate instead of just stopping the instance
 "
 }
 
-CMDLINE_OPTS=help,region:
+CMDLINE_OPTS=help,region:,terminate
 
 _opt_temp=$(getopt --name $0 -o +bch --long $CMDLINE_OPTS -- "$@")
 if [ $? -ne 0 ]; then
@@ -35,6 +36,7 @@ fi
 eval set -- "$_opt_temp"
 
 _opt_public=false
+_opt_terminate=false
 
 while :; do
   case "$1" in
@@ -43,6 +45,9 @@ while :; do
     ;;
   --region)
     shift; AWS_REGION="$1"
+    ;;
+  --terminate)
+    _opt_terminate=true
     ;;
   --)
     shift; break
@@ -91,9 +96,18 @@ fi
 
 INSTANCE_ID="$1"
 
-echo "Stopping Instance ID $INSTANCE_ID"
-ec2-stop-instances --region "$AWS_REGION" "$INSTANCE_ID"
-if [ $? -ne 0 ] ; then
-  echo "Noticed problem when trying to stop Instance with ID $INSTANCE_ID" >&2
-  exit 1
+if $_opt_terminate ; then
+  echo "Terminating instance ID $INSTANCE_ID (as requested via --terminate)"
+  ec2-terminate-instances --region "$AWS_REGION" "$INSTANCE_ID"
+  if [ $? -ne 0 ] ; then
+    echo "Noticed problem when trying to terminate instance with ID $INSTANCE_ID" >&2
+    exit 1
+  fi
+else
+  echo "Stopping Instance ID $INSTANCE_ID"
+  ec2-stop-instances --region "$AWS_REGION" "$INSTANCE_ID"
+  if [ $? -ne 0 ] ; then
+    echo "Noticed problem when trying to stop instance with ID $INSTANCE_ID" >&2
+    exit 1
+  fi
 fi
