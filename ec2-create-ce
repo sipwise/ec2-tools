@@ -218,8 +218,15 @@ fi
 if ec2-describe-images --region "$AWS_REGION" --filter "name=${AMI_NAME}" | grep -q . ; then
   echo "*** Warning, AMI with name ${AMI_NAME} exists already."
   if $_opt_remove_existing_ami ; then
-    echo "*** Option --remove-existing-ami is set, removing existing AMI with name ${AMI_NAME} ***"
-    ec2-deregister --region "$AWS_REGION" "${AMI_NAME}"
+    EXISTING_AMI_ID=$(ec2-describe-images --region "$AWS_REGION" --filter "name=${AMI_NAME}" | awk '/IMAGE/ {print $2}')
+
+    if [ -z "$EXISTING_AMI_ID" ] ; then
+      echo "Problem retrieving AMI ID for AMI with name ${AMI_NAME}, exiting." >&2
+      exit 1
+    fi
+
+    echo "*** Option --remove-existing-ami is set, removing existing AMI with ID ${EXISTING_AMI_ID} ***"
+    ec2-deregister --region "$AWS_REGION" "${EXISTING_AMI_ID}"
     if [ $? -ne 0 ] ; then
       echo "Noticed problem when trying to delete AMI with name ${AMI_NAME}." >&2
       exit 1
