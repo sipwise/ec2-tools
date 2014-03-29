@@ -138,7 +138,7 @@ if ! wget --quiet -O /tmp/ngcp-installer.deb "http://deb.sipwise.com/spce/ngcp-i
 fi
 
 if dpkg --info /tmp/ngcp-installer.deb | grep -q 'mr' ; then
-  NGCP_VERSION=$(dpkg --info /tmp/ngcp-installer.deb | awk '/^ Version: / {print $2}' | sed 's/.*mr//')
+  NGCP_VERSION=$(dpkg --info /tmp/ngcp-installer.deb | awk '/^ Version: / {print $2}' | sed 's/.*mr/mr/')
 else # older versions don't have the mr string in the version information, so let's reuse provided ngcp release
   NGCP_VERSION="$NGCP_RELEASE"
   echo "*** No 'mr' string inside version information of installer found... ***"
