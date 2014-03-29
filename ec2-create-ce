@@ -312,7 +312,7 @@ ami_instance_type=$INSTANCE_TYPE
 ngcp_version=$NGCP_VERSION
 
 # for usage in Jenkins
-test_host=$TESTHOST
+testhost=$TESTHOST
 vmversion=$VMVERSION
 EOF
 
