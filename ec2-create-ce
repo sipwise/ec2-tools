@@ -9,6 +9,8 @@ export TZ="UTC"
 [ -n "$KEY_NAME" ] || KEY_NAME="jenkins-ngcp-create-ami"
 [ -n "$KEY_FILE" ] || KEY_FILE="${HOME}/${KEY_NAME}.pem"
 [ -n "$SECURITY_GROUP" ] || SECURITY_GROUP="sipwise-only"
+[ -n "$TAG_PURPOSE" ] || TAG_PURPOSE="ngcp-create-ce-ami"
+DATE_STRING=$(date +%Y-%m-%d_%H:%m)
 
 # retrieve AWS_* environment variables
 if [ -r "$HOME/.ec2-create-ngcp" ] ; then
@@ -149,7 +151,6 @@ if [ -z "$NGCP_VERSION" ] ; then
 fi
 
 AMI_NAME="ngcp-ce-${NGCP_VERSION}"
-DATE_STRING=$(date +%Y-%m-%d_%H:%m)
 AMI_DESCRIPTION="Official sip:provider CE AMI for release ${NGCP_VERSION} [${DATE_STRING}]"
 
 USER_DATA_FILE="$(mktemp)"
@@ -174,6 +175,11 @@ if [ -z "$INSTANCE_ID" ] ; then
   exit 1
 fi
 
+# assign tag so we de-register again the AMI if needed
+ec2-create-tags --region "$AWS_REGION" "$INSTANCE_ID" --tag Purpose="$TAG_PURPOSE"
+
+# assign name (useful for web management console browsing)
+ec2-create-tags --region "$AWS_REGION" "$INSTANCE_ID" --tag Name="$AMI_NAME/$DATE_STRING"
 
 STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id=$INSTANCE_ID | awk '/INSTANCE/ {print $6}')"
 echo "Starting instance ID $INSTANCE_ID for ngcp version $NGCP_VERSION"
