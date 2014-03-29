@@ -214,6 +214,9 @@ while [ "$FINISHED_NGCP_CE_INSTALLATION" != "true" ] && [ $retry -ne 0 ] ; do
   fi
 done
 
+echo "Trying to retrieve ngcp-installer log files"
+scp -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@$HOSTNAME":/tmp/ngcp-installer\*log ./ || true
+
 if [ "$FINISHED_NGCP_CE_INSTALLATION" = "true" ] ; then
   echo "Successfully finished ngcp CE installation (version ${NGCP_VERSION})."
 else
