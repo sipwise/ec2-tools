@@ -237,4 +237,26 @@ echo "--- log file for AMI creation ---"
 cat "$LOGFILE_AMI"
 echo "*** End of Debugging information ***"
 
+echo
+echo "*** Status report for AMI ***
+AWS region:       $AWS_REGION
+AMI ID:           $AMI-ID
+AMI name:         $AMI_NAME
+AMI description:  $AMI_DESCRIPTION
+AMI public:       $_opt_public
+Instance type:    $INSTANCE_TYPE
+*** End of Status report ***"
+
+# generate report for usage in other scripts
+cat > ec2_report.txt << EOF
+instance_hostname=\"$HOSTNAME\"
+instance_id=\"$INSTANCE_ID\"
+aws_region=\"$AWS_REGION\"
+ami_id=\"$AMI-ID\"
+ami_name=\"$AMI_NAME\"
+ami_description=\"$AMI_DESCRIPTION\"
+ami_public=\"$_opt_public\"
+ami_instance_type=\"$INSTANCE_TYPE\"
+EOF
+
 rm -f "$USER_DATA_FILE" "$LOGFILE_RUN" "$LOGFILE_AMI"
