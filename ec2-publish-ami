@@ -15,17 +15,18 @@ usage() {
 
 Usage:
 
-  $0 <AMI_ID>
+  $0 --ami <AMI_ID> [<OPTIONS>]
 
 Supported OPTIONS:
 
+  --ami <AMI_ID>            mark AMI_ID as public
   --help                    display this help text
   --region <REGION>         specify region that should be used
                             (if unset defaults to the eu-west-1 zone)
 "
 }
 
-CMDLINE_OPTS=help,region:
+CMDLINE_OPTS=ami:,help,region:
 
 _opt_temp=$(getopt --name $0 -o +bch --long $CMDLINE_OPTS -- "$@")
 if [ $? -ne 0 ]; then
@@ -38,6 +39,9 @@ _opt_public=false
 
 while :; do
   case "$1" in
+  --ami)
+    shift; AMI_ID="$1"
+    ;;
   --help)
     usage ; exit 0;
     ;;
@@ -84,12 +88,10 @@ if ! check4progs ec2-modify-image-attribute ; then
   exit 1
 fi
 
-if [ $# -lt 1 ] ; then
+if [ -z "$AMI_ID" ] ; then
   usage >&2
   exit 1
 fi
-
-AMI_ID="$1"
 
 echo "Marking AMI $AMI_ID as public"
 ec2-modify-image-attribute --region "$AWS_REGION" "$AMI_ID" --launch-permission -a all

@@ -20,13 +20,14 @@ Usage:
 Supported OPTIONS:
 
   --help                    display this help text
+  --instance-id <ID>        operate on specified instance ID
   --region <REGION>         specify region that should be used
                             (if unset defaults to the eu-west-1 zone)
   --terminate               terminate instead of just stopping the instance
 "
 }
 
-CMDLINE_OPTS=help,region:,terminate
+CMDLINE_OPTS=help,instance-id:,region:,terminate
 
 _opt_temp=$(getopt --name $0 -o +bch --long $CMDLINE_OPTS -- "$@")
 if [ $? -ne 0 ]; then
@@ -42,6 +43,9 @@ while :; do
   case "$1" in
   --help)
     usage ; exit 0;
+    ;;
+  --instance-id)
+    shift; INSTANCE_ID="$1"
     ;;
   --region)
     shift; AWS_REGION="$1"
@@ -89,12 +93,10 @@ if ! check4progs ec2-stop-instances ; then
   exit 1
 fi
 
-if [ $# -lt 1 ] ; then
+if [ -z "$INSTANCE_ID" ] ; then
   usage >&2
   exit 1
 fi
-
-INSTANCE_ID="$1"
 
 if $_opt_terminate ; then
   echo "Terminating instance ID $INSTANCE_ID (as requested via --terminate)"
