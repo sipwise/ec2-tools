@@ -221,7 +221,7 @@ fi
 
 if $_opt_public ; then
   echo "Marking AMI as public"
-  ec2-modify-image-attribute "$AMI-ID" --launch-permission -a all
+  ec2-modify-image-attribute "$AMI_ID" --launch-permission -a all
   if [ $? -ne 0 ] ; then
     echo "Noticed problem when trying to mark AMI with ID $AMI_ID as public." >&2
     exit 1
@@ -242,7 +242,7 @@ echo "*** End of Debugging information ***"
 echo
 echo "*** Status report for AMI ***
 AWS region:       $AWS_REGION
-AMI ID:           $AMI-ID
+AMI ID:           $AMI_ID
 AMI name:         $AMI_NAME
 AMI description:  $AMI_DESCRIPTION
 AMI public:       $_opt_public
@@ -251,14 +251,14 @@ Instance type:    $INSTANCE_TYPE
 
 # generate report for usage in other scripts
 cat > ec2_report.txt << EOF
-instance_hostname=\"$HOSTNAME\"
-instance_id=\"$INSTANCE_ID\"
-aws_region=\"$AWS_REGION\"
-ami_id=\"$AMI-ID\"
-ami_name=\"$AMI_NAME\"
-ami_description=\"$AMI_DESCRIPTION\"
-ami_public=\"$_opt_public\"
-ami_instance_type=\"$INSTANCE_TYPE\"
+instance_hostname="$HOSTNAME"
+instance_id="$INSTANCE_ID"
+aws_region="$AWS_REGION"
+ami_id="$AMI_ID"
+ami_name="$AMI_NAME"
+ami_description="$AMI_DESCRIPTION"
+ami_public="$_opt_public"
+ami_instance_type="$INSTANCE_TYPE"
 EOF
 
 rm -f "$USER_DATA_FILE" "$LOGFILE_RUN" "$LOGFILE_AMI"
