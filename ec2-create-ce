@@ -289,15 +289,15 @@ NGCP version:     $NGCP_VERSION
 
 # generate report for usage in other scripts
 cat > ec2_report.txt << EOF
-instance_hostname="$HOSTNAME"
-instance_id="$INSTANCE_ID"
-aws_region="$AWS_REGION"
-ami_id="$AMI_ID"
-ami_name="$AMI_NAME"
-ami_description="$AMI_DESCRIPTION"
-ami_public="$_opt_public"
-ami_instance_type="$INSTANCE_TYPE"
-ngcp_version="$NGCP_VERSION"
+instance_hostname=$HOSTNAME
+instance_id=$INSTANCE_ID
+aws_region=$AWS_REGION
+ami_id=$AMI_ID
+ami_name=$AMI_NAME
+ami_description=$AMI_DESCRIPTION
+ami_public=$_opt_public
+ami_instance_type=$INSTANCE_TYPE
+ngcp_version=$NGCP_VERSION
 EOF
 
 rm -f "$USER_DATA_FILE" "$LOGFILE_RUN" "$LOGFILE_AMI"
