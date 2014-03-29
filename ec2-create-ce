@@ -1,0 +1,224 @@
+#!/bin/bash
+
+export EC2_HOME="/usr/share/ec2/ec2-api-tools"
+export JAVA_HOME="$(dirname $(dirname $(readlink /etc/alternatives/java)))"
+export PATH="$PATH:${EC2_HOME}/bin"
+export TZ="UTC"
+
+# defaults
+[ -n "$KEY_NAME" ] || KEY_NAME="jenkins-ngcp-create-ami"
+[ -n "$KEY_FILE" ] || KEY_FILE="${HOME}/${KEY_NAME}.pem"
+[ -n "$SECURITY_GROUP" ] || SECURITY_GROUP="sipwise-only"
+
+# retrieve AWS_* environment variables
+if [ -r "$HOME/.ec2-create-ngcp" ] ; then
+  source  "$HOME/.ec2-create-ngcp"
+fi
+
+usage() {
+  echo "$0 - script to generate EC2 AMI for sip:provider ngcp CE
+
+Usage:
+
+  $0 [OPTIONS]
+
+Supported OPTIONS:
+
+  --base-ami <AMI-ID>       AMI ID that should be used as base for running
+                            ngcp installation process (recommended: Debian 64bit)
+                            (if unset defaults to ami-9ef001e9)
+  --help                    display this help text
+  --instance-type <TYPE>    EC2 instance type that should be used for launching
+                            (if unset defaults to m1.medium)
+  --ngcp-release <VERSION>  sip:provider release version
+                            (if unset defaults to <latest>)
+  --region <REGION>         specify region that should be used
+                            (if unset defaults to the eu-west-1 zone)
+"
+}
+
+CMDLINE_OPTS=base-ami:,help,instance-type:,ngcp-release:,region:
+
+_opt_temp=$(getopt --name $0 -o +bch --long $CMDLINE_OPTS -- "$@")
+if [ $? -ne 0 ]; then
+  echo "Try '$0 --help' for more information." >& 2
+  exit 1
+fi
+eval set -- "$_opt_temp"
+
+while :; do
+  case "$1" in
+  --base-ami)
+    shift; BASE_AMI="$1"
+    ;;
+  --help)
+    usage ; exit 0;
+    ;;
+  --instance-type)
+    shift; INSTANCE_TYPE="$1"
+    ;;
+  --ngcp-release)
+    shift; NGCP_RELEASE="$1"
+    ;;
+  --region)
+    shift; AWS_REGION="$1"
+    ;;
+  --)
+    shift; break
+    ;;
+  *)
+    echo "Internal getopt error! $1" >&2
+    exit 1
+    ;;
+  esac
+  shift
+done
+
+# if unset set sane defaults
+[ -n "$AWS_REGION" ] || AWS_REGION="eu-west-1"
+[ -n "$BASE_AMI" ] || BASE_AMI="ami-9ef001e9"
+[ -n "$INSTANCE_TYPE" ] || INSTANCE_TYPE="m1.medium"
+
+if [ -z "$AWS_ACCESS_KEY" ] ; then
+  echo "AWS_ACCESS_KEY is unset, can not continue." >&2
+  exit 1
+fi
+
+if [ -z "$AWS_SECRET_KEY" ] ; then
+  echo "AWS_SECRET_KEY is unset, can not continue." >&2
+  exit 1
+fi
+
+if ! [ -r "$KEY_FILE" ] ; then
+  echo "Could not read key file ${KEY_FILE}, can not continue." >&2
+  exit 1
+fi
+
+check4progs(){
+  local RC=''
+  for arg in $* ; do
+    which $arg >/dev/null 2>&1 || RC="$arg"
+  done
+  if [ -n "$RC" ] ; then
+    echo "$RC not found/executable" >&2
+    return 1
+  fi
+}
+
+if ! check4progs ec2-run-instances  || ! check4progs ec2-create-image || ! check4progs ec2-describe-instances ; then
+  echo "Required tools not found, forgot to install ec2-api-tools?" >&2
+  exit 1
+fi
+
+if [ -z "$NGCP_RELEASE" ] ; then
+  NGCP_RELEASE="latest"
+  echo "No ngcp release set, defaulting to ${NGCP_RELEASE}"
+fi
+
+if ! wget --quiet -O /tmp/ngcp-installer.deb "http://deb.sipwise.com/spce/ngcp-installer-${NGCP_RELEASE}.deb" ; then
+  echo "Couldn't retrieve http://deb.sipwise.com/spce/ngcp-installer-${NGCP_RELEASE}.deb - exiting" >&2
+  exit 1
+fi
+
+NGCP_VERSION=$(dpkg --info /tmp/ngcp-installer.deb | awk '/^ Version: / {print $2}' | sed 's/.*mr//')
+
+if [ -z "$NGCP_VERSION" ] ; then
+  echo "Couldn't identify ngcp version, exiting." >&2
+  exit 1
+fi
+
+AMI_NAME="ngcp-ce-${NGCP_VERSION}"
+DATE_STRING=$(date +%Y-%m-%d_%H:%m)
+AMI_DESCRIPTION="Official sip:provider CE AMI for release ${NGCP_VERSION} [${DATE_STRING}]"
+
+USER_DATA_FILE="$(mktemp)"
+cat > "$USER_DATA_FILE" << EOF
+#!/bin/bash
+wget -O /tmp/ngcp-installer.deb http://deb.sipwise.com/spce/ngcp-installer-${NGCP_RELEASE}.deb
+dpkg -i /tmp/ngcp-installer.deb
+echo y | ngcp-installer 2>&1 | tee -a /tmp/ngcp-installer-debug.log
+EOF
+
+LOGFILE_RUN="$(mktemp)"
+ec2-run-instances --region "$AWS_REGION" \
+             --user-data-file "$USER_DATA_FILE" \
+             --group "$SECURITY_GROUP" \
+             --key "$KEY_NAME" \
+             --instance-type "$INSTANCE_TYPE" \
+             "$BASE_AMI" >"$LOGFILE_RUN"
+
+INSTANCE_ID="$(awk '/INSTANCE/ {print $2}' "$LOGFILE_RUN")"
+if [ -z "$INSTANCE_ID" ] ; then
+  echo "Could not identify instance ID, exiting." >&2
+  exit 1
+fi
+
+
+STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id=$INSTANCE_ID | awk '/INSTANCE/ {print $6}')"
+echo "Starting instance ID $INSTANCE_ID for ngcp version $NGCP_VERSION"
+
+retry=120 # up to 10 minutes
+while [ "$STATUS" != "running" ] && [ $retry -ne 0 ] ; do
+  STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id=$INSTANCE_ID | awk '/INSTANCE/ {print $6}')"
+  echo "Instance ID $INSTANCE_ID not running yet, checking again in 5 seconds ($retry retries left)."
+  sleep 5
+  retry=$(($retry - 1))
+done
+
+if [ "$STATUS" != "running" ] ; then
+  echo "No further retries left and couldn't bring up system for AMI $BASE_AMI, giving up." >&2
+  exit 1
+fi
+
+HOSTNAME="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id=$INSTANCE_ID | awk '/INSTANCE/ {print $4}')"
+
+retry=360 # up to 30 minutes
+FINISHED_NGCP_CE_INSTALLATION=false
+while [ "$FINISHED_NGCP_CE_INSTALLATION" != "true" ] && [ $retry -ne 0 ] ; do
+  ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@$HOSTNAME" \
+  "grep -q 'Installation finished. Thanks for choosing NGCP' /tmp/ngcp-installer-debug.log"
+  RC=$?
+  if [ $RC -eq 0 ] ; then
+    FINISHED_NGCP_CE_INSTALLATION=true
+  else
+    echo "ngcp installation not yet finished, checking again in 5 seconds ($retry retries left)."
+    sleep 5
+    retry=$(($retry - 1))
+  fi
+done
+
+if [ "$FINISHED_NGCP_CE_INSTALLATION" = "true" ] ; then
+  echo "Successfully finished ngcp CE installation (version ${NGCP_VERSION})."
+else
+  echo "No further retries left and couldn't finish ngcp CE installation (version ${NGCP_VERSION}), giving up." >&2
+  exit 1
+fi
+
+LOGFILE_AMI=$(mktemp)
+ec2-create-image --region "$AWS_REGION" \
+     --name "$AMI_NAME" \
+     --description "$AMI_DESCRIPTION" \
+     "$INSTANCE_ID" >"$LOGFILE_AMI"
+
+AMI_ID="$(awk '/^IMAGE/ {print $2}' $LOGFILE_AMI)"
+
+if [ -n "$AMI_ID" ] ; then
+  echo "Successfully created AMI with ID $AMI_ID"
+else
+  echo "Error creating AMI :(" >&2
+  cat "$LOGFILE_AMI" >&2
+  exit 1
+fi
+
+echo "*** Debugging information ***"
+echo "--- user-data-file ---"
+cat "$USER_DATA_FILE"
+
+echo "--- log file for instance run ---"
+cat "$LOGFILE_RUN"
+
+echo "--- log file for AMI creation ---"
+cat "$LOGFILE_AMI"
+echo "*** End of Debugging information ***"
+
+rm -f "$USER_DATA_FILE" "$LOGFILE_RUN" "$LOGFILE_AMI"
