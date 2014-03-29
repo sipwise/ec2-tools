@@ -179,7 +179,7 @@ fi
 ec2-create-tags --region "$AWS_REGION" "$INSTANCE_ID" --tag Purpose="$TAG_PURPOSE"
 
 # assign name (useful for web management console browsing)
-ec2-create-tags --region "$AWS_REGION" "$INSTANCE_ID" --tag Name="$AMI_NAME/$DATE_STRING"
+ec2-create-tags --region "$AWS_REGION" "$INSTANCE_ID" --tag Name="${AMI_NAME}/${DATE_STRING}/${JOB_NAME}/${BUILD_NUMBER}"
 
 STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id=$INSTANCE_ID | awk '/INSTANCE/ {print $6}')"
 echo "Starting instance ID $INSTANCE_ID for ngcp version $NGCP_VERSION"
