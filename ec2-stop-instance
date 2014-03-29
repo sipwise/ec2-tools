@@ -84,6 +84,11 @@ if ! check4progs ec2-stop-instances ; then
   exit 1
 fi
 
+if [ $# -lt 1 ] ; then
+  usage >&2
+  exit 1
+fi
+
 INSTANCE_ID="$1"
 
 echo "Stopping Instance ID $INSTANCE_ID"

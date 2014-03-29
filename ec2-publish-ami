@@ -84,6 +84,11 @@ if ! check4progs ec2-modify-image-attribute ; then
   exit 1
 fi
 
+if [ $# -lt 1 ] ; then
+  usage >&2
+  exit 1
+fi
+
 AMI_ID="$1"
 
 echo "Marking AMI $AMI_ID as public"
