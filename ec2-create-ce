@@ -253,6 +253,7 @@ AMI name:         $AMI_NAME
 AMI description:  $AMI_DESCRIPTION
 AMI public:       $_opt_public
 Instance type:    $INSTANCE_TYPE
+NGCP version:     $NGCP_VERSION
 *** End of Status report ***"
 
 # generate report for usage in other scripts
@@ -265,6 +266,7 @@ ami_name="$AMI_NAME"
 ami_description="$AMI_DESCRIPTION"
 ami_public="$_opt_public"
 ami_instance_type="$INSTANCE_TYPE"
+ngcp_version="$NGCP_VERSION"
 EOF
 
 rm -f "$USER_DATA_FILE" "$LOGFILE_RUN" "$LOGFILE_AMI"
