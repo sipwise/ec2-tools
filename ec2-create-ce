@@ -251,6 +251,20 @@ ec2-create-image --region "$AWS_REGION" \
 
 AMI_ID="$(awk '/^IMAGE/ {print $2}' $LOGFILE_AMI)"
 
+retry=120 # up to 10 minutes
+STATUS=""
+while [ "$STATUS" != "available" ] && [ $retry -ne 0 ] ; do
+  STATUS="$(ec2-describe-images --region ${AWS_REGION} "$AMI_ID" | awk '/^IMAGE/ {print $5}')"
+  echo "AMI ID $AMI_ID not yet finished (status: ${STATUS}), checking again in 5 seconds ($retry retries left)."
+  sleep 5
+  retry=$(($retry - 1))
+done
+
+if [ "$STATUS" != "available" ] ; then
+  echo "No further retries left and couldn't finish creation of AMI ID ${AMI_ID} for instance ID ${INSTANCE_ID}, giving up." >&2
+  exit 1
+fi
+
 if [ -n "$AMI_ID" ] ; then
   echo "Successfully created AMI with ID $AMI_ID"
 else
