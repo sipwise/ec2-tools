@@ -349,7 +349,7 @@ fi
 
 if $_opt_public ; then
   echo "Marking AMI as public"
-  ec2-modify-image-attribute "$AMI_ID" --launch-permission -a all
+  ec2-modify-image-attribute --region "$AWS_REGION" "$AMI_ID" --launch-permission -a all
   if [ $? -ne 0 ] ; then
     echo "Noticed problem when trying to mark AMI with ID $AMI_ID as public." >&2
     exit 1
