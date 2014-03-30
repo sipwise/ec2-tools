@@ -34,6 +34,9 @@ Supported OPTIONS:
   --help                    display this help text
   --instance-type <TYPE>    EC2 instance type that should be used for launching
                             (if unset defaults to m1.medium)
+  --keep-ami-snapshot       do not remove snapshot used by a possibly existing AMI
+                            which gets removed during the run (because of identical names)
+                            (only considered in combination with --remove-existing-ami)
   --ngcp-release <VERSION>  sip:provider release version
                             (if unset defaults to <latest>)
   --public                  Make AMI available to the public
@@ -46,7 +49,7 @@ Supported OPTIONS:
 "
 }
 
-CMDLINE_OPTS=base-ami:,help,instance-type:,ngcp-release:,public,region:,remove-existing-ami,skip-reboot
+CMDLINE_OPTS=base-ami:,help,instance-type:,keep-ami-snapshot,ngcp-release:,public,region:,remove-existing-ami,skip-reboot
 
 _opt_temp=$(getopt --name $0 -o +bch --long $CMDLINE_OPTS -- "$@")
 if [ $? -ne 0 ]; then
@@ -55,6 +58,7 @@ if [ $? -ne 0 ]; then
 fi
 eval set -- "$_opt_temp"
 
+_opt_keep_ami_snapshot=false
 _opt_public=false
 _opt_remove_existing_ami=false
 _opt_skip_reboot=false
@@ -69,6 +73,9 @@ while :; do
     ;;
   --instance-type)
     shift; INSTANCE_TYPE="$1"
+    ;;
+  --keep-ami-snapshot)
+    _opt_keep_ami_snapshot=true
     ;;
   --ngcp-release)
     shift; NGCP_RELEASE="$1"
@@ -277,12 +284,30 @@ if ec2-describe-images --region "$AWS_REGION" --filter "name=${AMI_NAME}" | grep
       exit 1
     fi
 
+    # we need to identify which snapshot is used by the AMI so we can remove it after "deregister"-ing the AMI
+    AMI_SNAPSHOT=$(ec2-describe-images --region "$AWS_REGION" --filter "name=${AMI_NAME}" | awk '/^BLOCKDEVICEMAPPING.*EBS/ {print $4}')
+    if [ -z "$AMI_SNAPSHOT" ] ; then
+      echo "Problem retrieving snapshot ID for AMI with name ${AMI_NAME}, exiting." >&2
+      exit 1
+    fi
+
     echo "*** Option --remove-existing-ami is set, removing existing AMI with ID ${EXISTING_AMI_ID} ***"
     ec2-deregister --region "$AWS_REGION" "${EXISTING_AMI_ID}"
     if [ $? -ne 0 ] ; then
       echo "Noticed problem when trying to delete AMI with name ${AMI_NAME}." >&2
       exit 1
     fi
+
+    if $_opt_keep_ami_snapshot ; then
+      echo "*** Option --keep-ami-snapshot is set, not removing AMI snapshot ${AMI_SNAPSHOT}. ***"
+    else
+      ec2-delete-snapshot --region "$AWS_REGION" "${AMI_SNAPSHOT}"
+      if [ $? -ne 0 ] ; then
+	echo "Noticed problem when trying to delete snapshot ${AMI_SNAPSHOT} for 'deregister'-ed AMI with name ${AMI_NAME}." >&2
+	exit 1
+      fi
+    fi
+
   fi
 fi
 
