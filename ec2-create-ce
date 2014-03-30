@@ -251,11 +251,11 @@ else
   # we probably have a new hostname after reboot
   HOSTNAME="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id=$INSTANCE_ID | awk '/INSTANCE/ {print $4}')"
 
-  # now check for available ssh connection
+  # now check for available ssh connection and nginx listening on port 1443
   retry=120 # up to 10 minutes
   STATUS=""
   while [ "$STATUS" != "ok" ] && [ $retry -ne 0 ] ; do
-    ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@$HOSTNAME" "cat /etc/motd"
+    ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@$HOSTNAME" "sudo lsof -i -n -P  | grep -q '*:1443 '"
     if [ $? -eq 0 ] ; then
       STATUS=ok
     else
