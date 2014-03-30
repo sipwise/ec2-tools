@@ -298,6 +298,12 @@ retry=120 # up to 10 minutes
 STATUS=""
 while [ "$STATUS" != "available" ] && [ $retry -ne 0 ] ; do
   STATUS="$(ec2-describe-images --region ${AWS_REGION} "$AMI_ID" | awk '/^IMAGE/ {print $5}')"
+
+  if [ "$STATUS" = "failed" ] ; then
+    echo "Fatal error while creating AMI ID $AMI_ID (status: ${STATUS}), exiting." >&2
+    exit 1
+  fi
+
   echo "AMI ID $AMI_ID not yet finished (status: ${STATUS}), checking again in 5 seconds ($retry retries left)."
   sleep 5
   retry=$(($retry - 1))
