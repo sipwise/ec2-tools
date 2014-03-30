@@ -42,10 +42,11 @@ Supported OPTIONS:
                             rid of it before trying to creating the AMI
   --region <REGION>         specify region that should be used
                             (if unset defaults to the eu-west-1 zone)
+  --skip-reboot             do not reboot ngcp system after installation finished
 "
 }
 
-CMDLINE_OPTS=base-ami:,help,instance-type:,ngcp-release:,public,region:,remove-existing-ami
+CMDLINE_OPTS=base-ami:,help,instance-type:,ngcp-release:,public,region:,remove-existing-ami,skip-reboot
 
 _opt_temp=$(getopt --name $0 -o +bch --long $CMDLINE_OPTS -- "$@")
 if [ $? -ne 0 ]; then
@@ -56,6 +57,7 @@ eval set -- "$_opt_temp"
 
 _opt_public=false
 _opt_remove_existing_ami=false
+_opt_skip_reboot=false
 
 while :; do
   case "$1" in
@@ -79,6 +81,9 @@ while :; do
     ;;
   --remove-existing-ami)
     _opt_remove_existing_ami=true
+    ;;
+  --skip-reboot)
+    _opt_skip_reboot=true
     ;;
   --)
     shift; break
@@ -223,6 +228,30 @@ else
   echo "No further retries left and couldn't finish ngcp CE installation (version ${NGCP_VERSION}), giving up." >&2
   exit 1
 fi
+
+# reboot CE system
+if $_opt_skip_reboot ; then
+  echo "*** Skipping system reboot of instance ID ${INSTANCE_ID} as requested via --skip-reboot ***"
+else
+  ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@$HOSTNAME" "sudo reboot"
+  retry=120 # up to 10 minutes
+  STATUS=""
+  while [ "$STATUS" != "running" ] && [ $retry -ne 0 ] ; do
+    STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id=$INSTANCE_ID | awk '/^INSTANCE/ {print $6}')"
+    echo "Instance ID not yet running (status: ${STATUS}), checking again in 5 seconds ($retry retries left)."
+    sleep 5
+    retry=$(($retry - 1))
+  done
+
+  if [ "$STATUS" != "running" ] ; then
+    echo "No further retries left and couldn't finish reboot of instance ID ${INSTANCE_ID}, giving up." >&2
+    exit 1
+  fi
+
+  # we probably have a new hostname after reboot
+  HOSTNAME="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id=$INSTANCE_ID | awk '/INSTANCE/ {print $4}')"
+fi
+
 
 if ec2-describe-images --region "$AWS_REGION" --filter "name=${AMI_NAME}" | grep -q . ; then
   echo "*** Warning, AMI with name ${AMI_NAME} exists already."
