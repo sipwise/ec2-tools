@@ -7,7 +7,7 @@ export TZ="UTC"
 
 # defaults
 [ -n "$KEY_NAME" ] || KEY_NAME="jenkins-ngcp-create-ami"
-[ -n "$KEY_FILE" ] || KEY_FILE="${HOME}/${KEY_NAME}.pem"
+[ -n "$KEY_FILE" ] || KEY_FILE="${HOME}/.ssh/${KEY_NAME}.pem"
 [ -n "$SECURITY_GROUP" ] || SECURITY_GROUP="sipwise-only"
 [ -n "$TAG_PURPOSE" ] || TAG_PURPOSE="ngcp-create-ce-ami"
 DATE_STRING=$(date +%Y-%m-%d_%H:%M)
