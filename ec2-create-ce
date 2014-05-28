@@ -166,7 +166,10 @@ if [ -z "$NGCP_VERSION" ] ; then
   exit 1
 fi
 
-AMI_NAME="ngcp-ce-${NGCP_VERSION}"
+# use just "ngcp-ce-mr3.3.1.0" if we get something like
+# "ngcp-ce-mr3.3.1.0+0~20140528091259.443+wheezy~1.gbpf74599"
+# as NGCP_VERSION
+AMI_NAME="ngcp-ce-${NGCP_VERSION%%\+*}"
 AMI_DESCRIPTION="Official sip:provider CE AMI for release ${NGCP_VERSION} [${DATE_STRING}]"
 
 USER_DATA_FILE="$(mktemp)"
