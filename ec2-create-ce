@@ -202,7 +202,7 @@ ec2-create-tags --region "$AWS_REGION" "$INSTANCE_ID" --tag Name="${AMI_NAME}/${
 # webserver areas
 if [ -n "$ELASTIC_IP" ] ; then
   echo "Associating elastic IP $ELASTIC_IP with instance ID $INSTANCE_ID"
-  ec2-associate-address "$ELASTIC_IP" -i "$INSTANCE_ID"
+  ec2-associate-address --region "${AWS_REGION}" "${ELASTIC_IP}" -i "${INSTANCE_ID}"
 fi
 
 STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id=$INSTANCE_ID | awk '/INSTANCE/ {print $6}')"
