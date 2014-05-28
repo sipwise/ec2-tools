@@ -31,6 +31,7 @@ Supported OPTIONS:
   --base-ami <AMI-ID>       AMI ID that should be used as base for running
                             ngcp installation process (recommended: Debian 64bit)
                             (if unset defaults to ami-9ef001e9)
+  --elastic-ip <IP>         associate started instance ID with provided Elastic IP address
   --help                    display this help text
   --instance-type <TYPE>    EC2 instance type that should be used for launching
                             (if unset defaults to m1.medium)
@@ -49,7 +50,7 @@ Supported OPTIONS:
 "
 }
 
-CMDLINE_OPTS=base-ami:,help,instance-type:,keep-ami-snapshot,ngcp-release:,public,region:,remove-existing-ami,skip-reboot
+CMDLINE_OPTS=base-ami:,elastic-ip:,help,instance-type:,keep-ami-snapshot,ngcp-release:,public,region:,remove-existing-ami,skip-reboot
 
 _opt_temp=$(getopt --name $0 -o +bch --long $CMDLINE_OPTS -- "$@")
 if [ $? -ne 0 ]; then
@@ -67,6 +68,9 @@ while :; do
   case "$1" in
   --base-ami)
     shift; BASE_AMI="$1"
+    ;;
+  --elastic-ip)
+    shift; ELASTIC_IP="$1"
     ;;
   --help)
     usage ; exit 0;
@@ -192,6 +196,14 @@ ec2-create-tags --region "$AWS_REGION" "$INSTANCE_ID" --tag Purpose="$TAG_PURPOS
 
 # assign name (useful for web management console browsing)
 ec2-create-tags --region "$AWS_REGION" "$INSTANCE_ID" --tag Name="${AMI_NAME}/${DATE_STRING}/${JOB_NAME}/build_${BUILD_NUMBER}"
+
+# assign elastic IP address to instance,
+# enabling us to enable access to restricted
+# webserver areas
+if [ -n "$ELASTIC_IP" ] ; then
+  echo "Associating elastic IP $ELASTIC_IP with instance ID $INSTANCE_ID"
+  ec2-associate-address "$ELASTIC_IP" -i "$INSTANCE_ID"
+fi
 
 STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id=$INSTANCE_ID | awk '/INSTANCE/ {print $6}')"
 echo "Starting instance ID $INSTANCE_ID for ngcp version $NGCP_VERSION"
