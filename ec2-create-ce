@@ -170,6 +170,15 @@ fi
 # "ngcp-ce-mr3.3.1.0+0~20140528091259.443+wheezy~1.gbpf74599"
 # as NGCP_VERSION
 AMI_NAME="ngcp-ce-${NGCP_VERSION%%\+*}"
+
+case "$AMI_NAME" in
+  ngcp-ce-mr*.*.*.*)
+    echo "*** Identified hotfix version string in AMI name [${AMI_NAME}]... ***"
+    AMI_NAME="${AMI_NAME%.*}"
+    echo "*** ... stripping AMI name to use ${AMI_NAME} instead ***"
+    ;;
+esac
+
 AMI_DESCRIPTION="Official sip:provider CE AMI for release ${NGCP_VERSION} [${DATE_STRING}]"
 
 USER_DATA_FILE="$(mktemp)"
