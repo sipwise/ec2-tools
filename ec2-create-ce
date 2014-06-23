@@ -187,6 +187,7 @@ cat > "$USER_DATA_FILE" << EOF
 wget -O /tmp/ngcp-installer.deb http://deb.sipwise.com/spce/ngcp-installer-${NGCP_RELEASE}.deb
 dpkg -i /tmp/ngcp-installer.deb
 echo y | ngcp-installer 2>&1 | tee -a /var/log/ngcp-installer-debug.log
+cp /tmp/ngcp-installer.log /var/log/ngcp-installer.log
 EOF
 
 LOGFILE_RUN="$(mktemp)"
@@ -239,7 +240,7 @@ retry=360 # up to 30 minutes
 FINISHED_NGCP_CE_INSTALLATION=false
 while [ "$FINISHED_NGCP_CE_INSTALLATION" != "true" ] && [ $retry -ne 0 ] ; do
   ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@$HOSTNAME" \
-  "grep -q 'Installation finished. Thanks for choosing NGCP' /tmp/ngcp-installer-debug.log"
+  "grep -q 'Installation finished. Thanks for choosing NGCP' /var/log/ngcp-installer-debug.log"
   RC=$?
   if [ $RC -eq 0 ] ; then
     FINISHED_NGCP_CE_INSTALLATION=true
@@ -251,7 +252,7 @@ while [ "$FINISHED_NGCP_CE_INSTALLATION" != "true" ] && [ $retry -ne 0 ] ; do
 done
 
 echo "Trying to retrieve ngcp-installer log files"
-scp -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@$HOSTNAME":/tmp/ngcp-installer\*log ./ || true
+scp -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@$HOSTNAME":/var/log/ngcp-installer\*log ./ || true
 
 if [ "$FINISHED_NGCP_CE_INSTALLATION" = "true" ] ; then
   echo "Successfully finished ngcp CE installation (version ${NGCP_VERSION})."
