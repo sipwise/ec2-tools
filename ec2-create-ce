@@ -28,6 +28,8 @@ Usage:
 
 Supported OPTIONS:
 
+  --ami-name <STRING>       set AMI name to specified string
+                            (if unset defaults to ngcp-ce-\$release)
   --base-ami <AMI-ID>       AMI ID that should be used as base for running
                             ngcp installation process (recommended: Debian 64bit)
                             (if unset defaults to ami-9ef001e9)
@@ -50,7 +52,7 @@ Supported OPTIONS:
 "
 }
 
-CMDLINE_OPTS=base-ami:,elastic-ip:,help,instance-type:,keep-ami-snapshot,ngcp-release:,public,region:,remove-existing-ami,skip-reboot
+CMDLINE_OPTS=ami-name:,base-ami:,elastic-ip:,help,instance-type:,keep-ami-snapshot,ngcp-release:,public,region:,remove-existing-ami,skip-reboot
 
 _opt_temp=$(getopt --name $0 -o +bch --long $CMDLINE_OPTS -- "$@")
 if [ $? -ne 0 ]; then
@@ -66,6 +68,9 @@ _opt_skip_reboot=false
 
 while :; do
   case "$1" in
+  --ami-name)
+    shift; AMI_NAME="$1"
+    ;;
   --base-ami)
     shift; BASE_AMI="$1"
     ;;
@@ -166,18 +171,26 @@ if [ -z "$NGCP_VERSION" ] ; then
   exit 1
 fi
 
-# use just "ngcp-ce-mr3.3.1.0" if we get something like
-# "ngcp-ce-mr3.3.1.0+0~20140528091259.443+wheezy~1.gbpf74599"
-# as NGCP_VERSION
-AMI_NAME="ngcp-ce-${NGCP_VERSION%%\+*}"
+# if AMI_NAME is set to "none" then we get defaults from Jenkins, if
+# so then use the ngcp-ce-... naming schema
+if [ -n "$AMI_NAME" ] && [ "$AMI_NAME" != "none" ] ; then
+  echo "*** AMI_NAME is set to $AMI_NAME ***"
+else
+  # use just "ngcp-ce-mr3.3.1.0" if we get something like
+  # "ngcp-ce-mr3.3.1.0+0~20140528091259.443+wheezy~1.gbpf74599"
+  # as NGCP_VERSION
+  AMI_NAME="ngcp-ce-${NGCP_VERSION%%\+*}"
+  echo "*** AMI_NAME is unset yet, defaulting to $AMI_NAME"
 
-case "$AMI_NAME" in
-  ngcp-ce-mr*.*.*.*)
-    echo "*** Identified hotfix version string in AMI name [${AMI_NAME}]... ***"
-    AMI_NAME="${AMI_NAME%.*}"
-    echo "*** ... stripping AMI name to use ${AMI_NAME} instead ***"
-    ;;
-esac
+  case "$AMI_NAME" in
+    ngcp-ce-mr*.*.*.*)
+      echo "*** Identified hotfix version string in AMI name [${AMI_NAME}]... ***"
+      AMI_NAME="${AMI_NAME%.*}"
+      echo "*** ... stripping AMI name to use ${AMI_NAME} instead ***"
+      ;;
+  esac
+fi
+
 
 AMI_DESCRIPTION="Official sip:provider CE AMI for release ${NGCP_VERSION} [${DATE_STRING}]"
 
