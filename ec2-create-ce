@@ -336,6 +336,11 @@ if ec2-describe-images --region "$AWS_REGION" --filter "name=${AMI_NAME}" | grep
   fi
 fi
 
+
+echo "*** Getting rid of all authorized_keys files. ***"
+ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@$HOSTNAME" \
+  'sudo find / -name authorized_keys -exec rm -f {} \;'
+
 LOGFILE_AMI=$(mktemp)
 ec2-create-image --region "$AWS_REGION" \
      --name "$AMI_NAME" \
