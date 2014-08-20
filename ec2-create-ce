@@ -33,6 +33,7 @@ Supported OPTIONS:
   --base-ami <AMI-ID>       AMI ID that should be used as base for running
                             ngcp installation process (recommended: Debian 64bit)
                             (if unset defaults to ami-9ef001e9)
+  --copy-to-all-regions     Copy resulting AMI to all available EC2 regions
   --elastic-ip <IP>         associate started instance ID with provided Elastic IP address
   --help                    display this help text
   --instance-type <TYPE>    EC2 instance type that should be used for launching
@@ -52,7 +53,46 @@ Supported OPTIONS:
 "
 }
 
-CMDLINE_OPTS=ami-name:,base-ami:,elastic-ip:,help,instance-type:,keep-ami-snapshot,ngcp-release:,public,region:,remove-existing-ami,skip-reboot
+# NOTE: this is non-blocking currently, so we're not waiting until everything is finished here
+copy_ami() {
+  local logfile=$(mktemp)
+
+  local source_region="$1"
+  local ami_id="$2"
+  local ami_name="$3"
+  local ami_description="$4"
+
+  local target_region
+  for target_region in us-east-1 us-west-2 us-west-1 eu-west-1 ap-southeast-1 ap-southeast-2 ap-northeast-1 sa-east-1 ; do
+    case "$target_region" in
+      "$source_region")
+	echo "*** Skipping region $target_region as source and destination region are the same ones. ***"
+	echo "AMI ID for region ${target_region}: ${ami_id}" >> ec2_report_amis.txt
+	;;
+      *)
+	echo "*** Copying AMI ID $ami_id from $source_region to $target_region (note: we are NOT blocking/waiting until this is fully finished!) ***"
+	ec2-copy-image --source-region "${source_region}" --region "${target_region}" --source-ami-id "$ami_id" -n "$ami_name" -d "$ami_description" > "$logfile"
+        if [ $? -ne 0 ]; then
+	  echo "Error copying AMI ID $ami_id from $source_region to $target_region" >&2
+	  return 1
+	fi
+
+	local ami_id_copy="$(awk '/^IMAGE/ {print $2}' $logfile)"
+
+	if [ -z "$ami_id_copy" ] ; then
+	  echo "Error retrieving AMI ID $ami_id for region ${target_region}:"
+	  cat "$logfile" >&2
+	  return 1
+	fi
+
+	# for usage as global report
+	echo "AMI ID for region ${target_region}: $ami_id_copy" >> ec2_report_amis.txt
+	;;
+    esac
+  done
+}
+
+CMDLINE_OPTS=ami-name:,base-ami:,copy-to-all-regions,elastic-ip:,help,instance-type:,keep-ami-snapshot,ngcp-release:,public,region:,remove-existing-ami,skip-reboot
 
 _opt_temp=$(getopt --name $0 -o +bch --long $CMDLINE_OPTS -- "$@")
 if [ $? -ne 0 ]; then
@@ -65,6 +105,7 @@ _opt_keep_ami_snapshot=false
 _opt_public=false
 _opt_remove_existing_ami=false
 _opt_skip_reboot=false
+_opt_copy_to_all_regions=false
 
 while :; do
   case "$1" in
@@ -73,6 +114,9 @@ while :; do
     ;;
   --base-ami)
     shift; BASE_AMI="$1"
+    ;;
+  --copy-to-all-regions)
+    _opt_copy_to_all_regions=true
     ;;
   --elastic-ip)
     shift; ELASTIC_IP="$1"
@@ -390,6 +434,10 @@ else
   exit 1
 fi
 
+if $_opt_copy_to_all_regions ; then
+  copy_ami "$AWS_REGION" "$AMI_ID" "$AMI_NAME" "$AMI_DESCRIPTION"
+fi
+
 if $_opt_public ; then
   echo "Marking AMI as public"
   ec2-modify-image-attribute --region "$AWS_REGION" "$AMI_ID" --launch-permission -a all
@@ -420,6 +468,11 @@ AMI public:       $_opt_public
 Instance type:    $INSTANCE_TYPE
 NGCP version:     $NGCP_VERSION
 *** End of Status report ***"
+
+if [ -r ec2_report_amis.txt ] ; then
+  echo "*** Status report for AMIs in all regions ***"
+  cat ec2_report_amis.txt
+fi
 
 # Jenkins setup specific
 TESTHOST="$HOSTNAME"
