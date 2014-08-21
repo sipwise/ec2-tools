@@ -87,6 +87,15 @@ copy_ami() {
 	  return 1
 	fi
 
+	if $_opt_public ; then
+	  echo "Marking AMI $ami_id as public"
+	  ec2-modify-image-attribute --region "$target_region" "$ami_id" --launch-permission -a all
+	  if [ $? -ne 0 ] ; then
+	    echo "Noticed problem when trying to mark AMI with ID $ami_id in region $target_region as public." >&2
+	    return 1
+	  fi
+	fi
+
 	# for usage as global report
 	echo "AMI ID for region ${target_region}: $ami_id_copy" >> ec2_report_amis.txt
 	;;
