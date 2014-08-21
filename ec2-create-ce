@@ -70,6 +70,8 @@ copy_ami() {
 	echo "AMI ID for region ${target_region}: ${ami_id}" >> ec2_report_amis.txt
 	;;
       *)
+        remove_ami "$target_region" "$ami_name"
+
 	echo "*** Copying AMI ID $ami_id from $source_region to $target_region (note: we are NOT blocking/waiting until this is fully finished!) ***"
 	ec2-copy-image --source-region "${source_region}" --region "${target_region}" --source-ami-id "$ami_id" -n "$ami_name" -d "$ami_description" > "$logfile"
         if [ $? -ne 0 ]; then
@@ -90,6 +92,51 @@ copy_ami() {
 	;;
     esac
   done
+}
+
+remove_ami() {
+  local aws_region="$1"
+  local ami_name="$2"
+
+  if ! ec2-describe-images --region "$aws_region" --filter "name=${ami_name}" | grep -q . ; then
+    return 0 # no AMIs with given name present
+  fi
+
+  echo "*** Warning, AMI with name ${ami_name} exists already."
+  if ! $_opt_remove_existing_ami ; then
+    return 0
+  fi
+
+  local existing_ami_id=$(ec2-describe-images --region "$aws_region" --filter "name=${ami_name}" | awk '/IMAGE/ {print $2}')
+
+  if [ -z "$existing_ami_id" ] ; then
+    echo "Problem retrieving AMI ID for AMI with name ${ami_name}." >&2
+    return 1
+  fi
+
+  # we need to identify which snapshot is used by the AMI so we can remove it after "deregister"-ing the AMI
+  local ami_snapshot=$(ec2-describe-images --region "$aws_region" --filter "name=${ami_name}" | awk '/^BLOCKDEVICEMAPPING.*EBS/ {print $4}')
+  if [ -z "$ami_snapshot" ] ; then
+    echo "Problem retrieving snapshot ID for AMI with name ${ami_name}." >&2
+    return 1
+  fi
+
+  echo "*** Option --remove-existing-ami is set, removing existing AMI with ID ${existing_ami_id} ***"
+  ec2-deregister --region "$aws_region" "${existing_ami_id}"
+  if [ $? -ne 0 ] ; then
+    echo "Noticed problem when trying to delete AMI with name ${ami_name}." >&2
+    return 1
+  fi
+
+  if $_opt_keep_ami_snapshot ; then
+    echo "*** Option --keep-ami-snapshot is set, not removing AMI snapshot ${ami_snapshot}. ***"
+  else
+    ec2-delete-snapshot --region "$aws_region" "${ami_snapshot}"
+    if [ $? -ne 0 ] ; then
+      echo "Noticed problem when trying to delete snapshot ${ami_snapshot} for 'deregister'-ed AMI with name ${ami_name}." >&2
+      return 1
+    fi
+  fi
 }
 
 CMDLINE_OPTS=ami-name:,base-ami:,copy-to-all-regions,elastic-ip:,help,instance-type:,keep-ami-snapshot,ngcp-release:,public,region:,remove-existing-ami,skip-reboot
@@ -355,44 +402,7 @@ else
   done
 fi
 
-
-if ec2-describe-images --region "$AWS_REGION" --filter "name=${AMI_NAME}" | grep -q . ; then
-  echo "*** Warning, AMI with name ${AMI_NAME} exists already."
-  if $_opt_remove_existing_ami ; then
-    EXISTING_AMI_ID=$(ec2-describe-images --region "$AWS_REGION" --filter "name=${AMI_NAME}" | awk '/IMAGE/ {print $2}')
-
-    if [ -z "$EXISTING_AMI_ID" ] ; then
-      echo "Problem retrieving AMI ID for AMI with name ${AMI_NAME}, exiting." >&2
-      exit 1
-    fi
-
-    # we need to identify which snapshot is used by the AMI so we can remove it after "deregister"-ing the AMI
-    AMI_SNAPSHOT=$(ec2-describe-images --region "$AWS_REGION" --filter "name=${AMI_NAME}" | awk '/^BLOCKDEVICEMAPPING.*EBS/ {print $4}')
-    if [ -z "$AMI_SNAPSHOT" ] ; then
-      echo "Problem retrieving snapshot ID for AMI with name ${AMI_NAME}, exiting." >&2
-      exit 1
-    fi
-
-    echo "*** Option --remove-existing-ami is set, removing existing AMI with ID ${EXISTING_AMI_ID} ***"
-    ec2-deregister --region "$AWS_REGION" "${EXISTING_AMI_ID}"
-    if [ $? -ne 0 ] ; then
-      echo "Noticed problem when trying to delete AMI with name ${AMI_NAME}." >&2
-      exit 1
-    fi
-
-    if $_opt_keep_ami_snapshot ; then
-      echo "*** Option --keep-ami-snapshot is set, not removing AMI snapshot ${AMI_SNAPSHOT}. ***"
-    else
-      ec2-delete-snapshot --region "$AWS_REGION" "${AMI_SNAPSHOT}"
-      if [ $? -ne 0 ] ; then
-	echo "Noticed problem when trying to delete snapshot ${AMI_SNAPSHOT} for 'deregister'-ed AMI with name ${AMI_NAME}." >&2
-	exit 1
-      fi
-    fi
-
-  fi
-fi
-
+remove_ami "$AWS_REGION" "$AMI_NAME" || exit 1
 
 echo "*** Getting rid of all authorized_keys files. ***"
 ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@$HOSTNAME" \
@@ -435,7 +445,7 @@ else
 fi
 
 if $_opt_copy_to_all_regions ; then
-  copy_ami "$AWS_REGION" "$AMI_ID" "$AMI_NAME" "$AMI_DESCRIPTION"
+  copy_ami "$AWS_REGION" "$AMI_ID" "$AMI_NAME" "$AMI_DESCRIPTION" || exit 1
 fi
 
 if $_opt_public ; then
