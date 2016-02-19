@@ -53,6 +53,37 @@ Supported OPTIONS:
 "
 }
 
+# generate report for usage in other scripts/jenkins jobs
+generate_ec2_report() {
+  cat > ec2_report.txt << EOF
+instance_hostname=$HOSTNAME
+instance_id=$INSTANCE_ID
+aws_region=$AWS_REGION
+ami_id=$AMI_ID
+ami_name=$AMI_NAME
+ami_description=$AMI_DESCRIPTION
+ami_public=$_opt_public
+ami_instance_type=$INSTANCE_TYPE
+ngcp_version=$NGCP_VERSION
+
+# for usage in Jenkins
+testhost=$TESTHOST
+vmversion=$VMVERSION
+EOF
+}
+
+bailout() {
+  [ -n "$1" ] && EXIT="$1" || EXIT="1"
+
+  # ensure we get ec2_report.txt even if script execution fails,
+  # otherwise Jenkins jobs like ec2-ami-ec can't provide ec2_report.txt
+  # to Jenkins downstream job ec2-ami-stop
+  generate_ec2_report
+
+  exit "$EXIT"
+}
+trap bailout 1 2 3 3 6 9 14 15
+
 # NOTE: this is non-blocking currently, so we're not waiting until everything is finished here
 copy_ami() {
   local logfile=$(mktemp)
@@ -259,7 +290,7 @@ fi
 
 if [ -z "$NGCP_VERSION" ] ; then
   echo "Couldn't identify ngcp version, exiting." >&2
-  exit 1
+  bailout 1
 fi
 
 # if AMI_NAME is set to "none" then we get defaults from Jenkins, if
@@ -339,7 +370,7 @@ done
 
 if [ "$STATUS" != "running" ] ; then
   echo "No further retries left and couldn't bring up system for AMI $BASE_AMI, giving up." >&2
-  exit 1
+  bailout 1
 fi
 
 HOSTNAME="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id=$INSTANCE_ID | awk '/INSTANCE/ {print $4}')"
@@ -366,7 +397,7 @@ if [ "$FINISHED_NGCP_CE_INSTALLATION" = "true" ] ; then
   echo "Successfully finished ngcp CE installation (version ${NGCP_VERSION})."
 else
   echo "No further retries left and couldn't finish ngcp CE installation (version ${NGCP_VERSION}), giving up." >&2
-  exit 1
+  bailout 1
 fi
 
 # reboot CE system
@@ -385,7 +416,7 @@ else
 
   if [ "$STATUS" != "running" ] ; then
     echo "No further retries left and couldn't finish reboot of instance ID ${INSTANCE_ID}, giving up." >&2
-    exit 1
+    bailout 1
   fi
 
   # we probably have a new hostname after reboot
@@ -406,7 +437,7 @@ else
   done
 fi
 
-remove_ami "$AWS_REGION" "$AMI_NAME" || exit 1
+remove_ami "$AWS_REGION" "$AMI_NAME" || bailout 1
 
 echo "*** Getting rid of all authorized_keys files. ***"
 ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@$HOSTNAME" \
@@ -427,7 +458,7 @@ while [ "$STATUS" != "available" ] && [ $retry -ne 0 ] ; do
 
   if [ "$STATUS" = "failed" ] ; then
     echo "Fatal error while creating AMI ID $AMI_ID (status: ${STATUS}), exiting." >&2
-    exit 1
+    bailout 1
   fi
 
   echo "AMI ID $AMI_ID not yet finished (status: ${STATUS}), checking again in 5 seconds ($retry retries left)."
@@ -437,7 +468,7 @@ done
 
 if [ "$STATUS" != "available" ] ; then
   echo "No further retries left and couldn't finish creation of AMI ID ${AMI_ID} for instance ID ${INSTANCE_ID}, giving up." >&2
-  exit 1
+  bailout 1
 fi
 
 if [ -n "$AMI_ID" ] ; then
@@ -445,11 +476,11 @@ if [ -n "$AMI_ID" ] ; then
 else
   echo "Error creating AMI :(" >&2
   cat "$LOGFILE_AMI" >&2
-  exit 1
+  bailout 1
 fi
 
 if $_opt_copy_to_all_regions ; then
-  copy_ami "$AWS_REGION" "$AMI_ID" "$AMI_NAME" "$AMI_DESCRIPTION" || exit 1
+  copy_ami "$AWS_REGION" "$AMI_ID" "$AMI_NAME" "$AMI_DESCRIPTION" || bailout 1
 fi
 
 if $_opt_public ; then
@@ -457,7 +488,7 @@ if $_opt_public ; then
   ec2-modify-image-attribute --region "$AWS_REGION" "$AMI_ID" --launch-permission -a all
   if [ $? -ne 0 ] ; then
     echo "Noticed problem when trying to mark AMI with ID $AMI_ID as public." >&2
-    exit 1
+    bailout 1
   fi
 fi
 
@@ -500,21 +531,6 @@ case "$NGCP_RELEASE" in
     ;;
 esac
 
-# generate report for usage in other scripts
-cat > ec2_report.txt << EOF
-instance_hostname=$HOSTNAME
-instance_id=$INSTANCE_ID
-aws_region=$AWS_REGION
-ami_id=$AMI_ID
-ami_name=$AMI_NAME
-ami_description=$AMI_DESCRIPTION
-ami_public=$_opt_public
-ami_instance_type=$INSTANCE_TYPE
-ngcp_version=$NGCP_VERSION
-
-# for usage in Jenkins
-testhost=$TESTHOST
-vmversion=$VMVERSION
-EOF
+generate_ec2_report
 
 rm -f "$USER_DATA_FILE" "$LOGFILE_RUN" "$LOGFILE_AMI"
