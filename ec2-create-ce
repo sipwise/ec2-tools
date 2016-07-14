@@ -363,9 +363,9 @@ echo "Starting instance ID $INSTANCE_ID for ngcp version $NGCP_VERSION"
 retry=120 # up to 10 minutes
 while [ "$STATUS" != "running" ] && [ $retry -ne 0 ] ; do
   STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id=$INSTANCE_ID | awk '/INSTANCE/ {print $6}')"
+  retry=$(($retry - 1))
   echo "Instance ID $INSTANCE_ID not running yet, checking again in 5 seconds ($retry retries left)."
   sleep 5
-  retry=$(($retry - 1))
 done
 
 if [ "$STATUS" != "running" ] ; then
@@ -409,9 +409,9 @@ else
   STATUS=""
   while [ "$STATUS" != "running" ] && [ $retry -ne 0 ] ; do
     STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id=$INSTANCE_ID | awk '/^INSTANCE/ {print $6}')"
+    retry=$(($retry - 1))
     echo "Instance ID not yet running (status: ${STATUS}), checking again in 5 seconds ($retry retries left)."
     sleep 5
-    retry=$(($retry - 1))
   done
 
   if [ "$STATUS" != "running" ] ; then
@@ -430,11 +430,17 @@ else
     if [ $? -eq 0 ] ; then
       STATUS=ok
     else
-      echo "Host $HOSTNAME can't be reached via ssh login yet, checking again in 5 seconds ($retry retries left)."
-      sleep 5
       retry=$(($retry - 1))
+      echo "Host $HOSTNAME can't be reached via ssh login yet or nginx not listening on port 1443."
+      echo "Retrying ssh access and checking port 1443 LISTEN state in 5 seconds ($retry retries left)."
+      sleep 5
     fi
   done
+
+  if [ "$STATUS" != "ok" ] ; then
+    echo "Host $HOSTNAME can't be reached via ssh or port 1443 not in state LISTEN, giving up." >&2
+    bailout 1
+  fi
 fi
 
 remove_ami "$AWS_REGION" "$AMI_NAME" || bailout 1
@@ -461,9 +467,9 @@ while [ "$STATUS" != "available" ] && [ $retry -ne 0 ] ; do
     bailout 1
   fi
 
+  retry=$(($retry - 1))
   echo "AMI ID $AMI_ID not yet finished (status: ${STATUS}), checking again in 5 seconds ($retry retries left)."
   sleep 5
-  retry=$(($retry - 1))
 done
 
 if [ "$STATUS" != "available" ] ; then
