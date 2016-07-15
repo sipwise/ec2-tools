@@ -1,0 +1,73 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "9ab8dda7_9cf1f197",
+        "filename": "ec2-create-ce",
+        "patchSetId": 1
+      },
+      "lineNbr": 366,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2016-07-15T10:18:48Z",
+      "side": 1,
+      "message": "AFAIK, bash uses retry\u003d$((retry - 1)) no second dollar there",
+      "range": {
+        "startLine": 366,
+        "startChar": 2,
+        "endLine": 366,
+        "endChar": 23
+      },
+      "revId": "b7e88c8ded952cf87085213b3f2387729b5fa69b",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9ab8dda7_fcf4ad88",
+        "filename": "ec2-create-ce",
+        "patchSetId": 1
+      },
+      "lineNbr": 412,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2016-07-15T10:18:48Z",
+      "side": 1,
+      "message": "the same as above",
+      "range": {
+        "startLine": 412,
+        "startChar": 0,
+        "endLine": 412,
+        "endChar": 25
+      },
+      "revId": "b7e88c8ded952cf87085213b3f2387729b5fa69b",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9ab8dda7_dcf7698b",
+        "filename": "ec2-create-ce",
+        "patchSetId": 1
+      },
+      "lineNbr": 470,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2016-07-15T10:18:48Z",
+      "side": 1,
+      "message": "the same as above",
+      "range": {
+        "startLine": 470,
+        "startChar": 11,
+        "endLine": 470,
+        "endChar": 17
+      },
+      "revId": "b7e88c8ded952cf87085213b3f2387729b5fa69b",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
