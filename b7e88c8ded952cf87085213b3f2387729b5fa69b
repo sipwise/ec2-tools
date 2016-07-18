@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "9ab8dda7_849bd7c8",
+        "filename": "ec2-create-ce",
+        "patchSetId": 1
+      },
+      "lineNbr": 366,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2016-07-18T17:35:24Z",
+      "side": 1,
+      "message": "Thanks, adjusted as well as the other ones. (Doesn\u0027t do any harm and it\u0027s not bash specific, but yeah, let\u0027s fix it :))",
+      "parentUuid": "9ab8dda7_9cf1f197",
+      "range": {
+        "startLine": 366,
+        "startChar": 2,
+        "endLine": 366,
+        "endChar": 23
+      },
+      "revId": "b7e88c8ded952cf87085213b3f2387729b5fa69b",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "9ab8dda7_fcf4ad88",
         "filename": "ec2-create-ce",
         "patchSetId": 1
