@@ -322,6 +322,13 @@ cat > "$USER_DATA_FILE" << EOF
 wget -O /tmp/ngcp-installer.deb http://deb.sipwise.com/spce/ngcp-installer-${NGCP_RELEASE}.deb
 dpkg -i /tmp/ngcp-installer.deb
 
+if [ -d /run/systemd/system ] ; then
+  echo "Switching from systemd to sysvinit (pre-reboot)"
+  apt-get install --yes sysvinit-core
+  echo "Rebooting now to switch from systemd to sysvinit"
+  reboot
+fi
+
 # workaround for mr4.2.1
 export HOME=/root/
 
