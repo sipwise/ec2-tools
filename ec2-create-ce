@@ -327,6 +327,9 @@ if [ -d /run/systemd/system ] ; then
   apt update
   apt install --yes sysvinit-core
   echo "Rebooting now to switch from systemd to sysvinit"
+  #Temporary crontab to restart installer after reboot
+  (crontab -l ; echo "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin") | crontab -
+  (crontab -l ; echo "@reboot FORCE=yes /usr/sbin/ngcp-installer 2>&1 | tee -a /var/log/ngcp-installer-debug.log") | crontab -
   reboot
 fi
 
@@ -407,6 +410,9 @@ else
   echo "No further retries left and couldn't finish ngcp CE installation (version ${NGCP_VERSION}), giving up." >&2
   bailout 1
 fi
+
+#Remove temporary crontab
+ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@$HOSTNAME" "sudo crontab -l || sudo crontab -r"
 
 # reboot CE system
 if $_opt_skip_reboot ; then
