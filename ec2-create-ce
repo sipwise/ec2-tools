@@ -321,6 +321,7 @@ cat > "$USER_DATA_FILE" << EOF
 #!/bin/bash
 wget -O /tmp/ngcp-installer.deb http://deb.sipwise.com/spce/ngcp-installer-${NGCP_RELEASE}.deb
 dpkg -i /tmp/ngcp-installer.deb
+sed -i 's/cdn-aws.deb.debian.org/deb.debian.org/' /etc/apt/sources.list
 
 if [ -d /run/systemd/system ] ; then
   echo "Switching from systemd to sysvinit (pre-reboot)"
