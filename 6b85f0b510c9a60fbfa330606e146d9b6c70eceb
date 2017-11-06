@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "dab895d6_9e63d819",
+        "filename": "ec2-create-ce",
+        "patchSetId": 2
+      },
+      "lineNbr": 325,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2017-11-06T10:52:51Z",
+      "side": 1,
+      "message": "I believe we also should check the version here,\nas those operation is necessary for mr5.5+ only,\nwhile systemd is default for mr4.5+\n(theoretically there will be no harm there... while who knowns... mr5.4.2 AMI might be completely different to mr5.4.1 AMI) :-(",
+      "revId": "6b85f0b510c9a60fbfa330606e146d9b6c70eceb",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
