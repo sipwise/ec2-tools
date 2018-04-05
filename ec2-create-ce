@@ -293,6 +293,19 @@ if [ -z "$NGCP_VERSION" ] ; then
   bailout 1
 fi
 
+# ensure we don't have any builds running already, see TT#30565
+NUM_RUNNING_INSTANCES=$(ec2-describe-instances --region "${AWS_REGION}" \
+                       --filter "instance-state-name=running" \
+		       --filter "tag:Purpose=${TAG_PURPOSE}" 2>/dev/null | \
+		       grep -c '^INSTANCE')
+if [ "$NUM_RUNNING_INSTANCES" -gt 0 ] ; then
+  echo "Error: there are running instances with tag $TAG_PURPOSE in region $AWS_REGION"  >&2
+  echo "Exiting to ensure we don't have instances running due to Jenkins job failures."  >&2
+  echo "Please ensure that those instances are stopped before trying to build new ones." >&2
+  echo "In case of questions contact someone with according AWS permissions."            >&2
+  bailout 1
+fi
+
 # if AMI_NAME is set to "none" then we get defaults from Jenkins, if
 # so then use the ngcp-ce-... naming schema
 if [ -n "$AMI_NAME" ] && [ "$AMI_NAME" != "none" ] ; then
