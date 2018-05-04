@@ -432,7 +432,7 @@ ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FI
 if $_opt_skip_reboot ; then
   echo "*** Skipping system reboot of instance ID ${INSTANCE_ID} as requested via --skip-reboot ***"
 else
-  ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@$HOSTNAME" "sudo reboot"
+  ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@$HOSTNAME" "sudo reboot -f"
   retry=120 # up to 10 minutes
   STATUS=""
   while [ "$STATUS" != "running" ] && [ $retry -ne 0 ] ; do
