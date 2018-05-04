@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "3ab451fb_22a70a51",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2018-05-04T13:39:21Z",
+      "side": 1,
+      "message": "Are those servers using systemd (which the known synchronous reboot problem?) :) if so a way to make those async for now would be to use systemctl reboot instead. :)",
+      "revId": "787802488c09078de267850e94a5d3205a4a92b9",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
