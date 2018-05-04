@@ -329,6 +329,17 @@ fi
 
 AMI_DESCRIPTION="Official sip:provider CE AMI for release ${NGCP_VERSION} [${DATE_STRING}]"
 
+case "$NGCP_RELEASE" in
+  2.*|3.*|mr3.*|mr4.*|mr5.*|mr6.0*|mr6.1*)
+    echo "*** ngcp release $NGCP_RELEASE doesn't support systemd"
+    SYSTEMD_SUPPORT=false
+    ;;
+  *)
+    echo "*** ngcp release $NGCP_RELEASE supports systemd"
+    SYSTEMD_SUPPORT=true
+    ;;
+esac
+
 USER_DATA_FILE="$(mktemp)"
 cat > "$USER_DATA_FILE" << EOF
 #!/bin/bash
@@ -336,7 +347,7 @@ wget -O /tmp/ngcp-installer.deb http://deb.sipwise.com/spce/ngcp-installer-${NGC
 dpkg -i /tmp/ngcp-installer.deb
 sed -i 's/cdn-aws.deb.debian.org/deb.debian.org/' /etc/apt/sources.list
 
-if [ -d /run/systemd/system ] ; then
+if [ "$SYSTEMD_SUPPORT" = "false" ] && [ -d /run/systemd/system ] ; then
   echo "Switching from systemd to sysvinit (pre-reboot)"
   apt update
   apt install --yes sysvinit-core
