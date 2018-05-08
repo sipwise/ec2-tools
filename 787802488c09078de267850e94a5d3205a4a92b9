@@ -16,6 +16,24 @@
       "revId": "787802488c09078de267850e94a5d3205a4a92b9",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1ab14d0d_dbba93c0",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2018-05-08T11:55:44Z",
+      "side": 1,
+      "message": "Our jenkins-slaves use + run systemd, and the EC2 AMIs are also running systemd AFAICT (I suppose the later is the side you\u0027re interested in).\n\nShould we switch to \"systemctl reboot -f\"?",
+      "parentUuid": "3ab451fb_22a70a51",
+      "revId": "787802488c09078de267850e94a5d3205a4a92b9",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
