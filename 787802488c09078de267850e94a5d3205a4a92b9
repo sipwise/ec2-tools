@@ -34,6 +34,24 @@
       "revId": "787802488c09078de267850e94a5d3205a4a92b9",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1ab14d0d_7b26df17",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 1
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2018-05-08T12:35:40Z",
+      "side": 1,
+      "message": "It depends whether those AMI images are stock NGCP mr6.2+ systems or not. If the former they should already have the async fix, in which case I do not know why this problem would happen. If the latter then switching to just «systemctl reboot» even w/o -f might do the trick. But I\u0027ve to say I\u0027ve no clue how or what the EC2 AMIs work or are composed of. :)",
+      "parentUuid": "1ab14d0d_dbba93c0",
+      "revId": "787802488c09078de267850e94a5d3205a4a92b9",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
