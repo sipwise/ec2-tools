@@ -24,7 +24,7 @@ usage() {
 
 Usage:
 
-  $0 [OPTIONS]
+  $0 <mandatory_options> [OPTIONS]
 
 Supported OPTIONS:
 
@@ -32,12 +32,11 @@ Supported OPTIONS:
                             (if unset defaults to ngcp-ce-\$release)
   --base-ami <AMI-ID>       AMI ID that should be used as base for running
                             ngcp installation process (recommended: Debian 64bit)
-                            (if unset defaults to ami-9ef001e9)
+                            (if unset defaults to ami-8a745cf3)
   --copy-to-all-regions     Copy resulting AMI to all available EC2 regions
-  --elastic-ip <IP>         associate started instance ID with provided Elastic IP address
   --help                    display this help text
   --instance-type <TYPE>    EC2 instance type that should be used for launching
-                            (if unset defaults to m1.medium)
+                            (if unset defaults to t2.medium)
   --keep-ami-snapshot       do not remove snapshot used by a possibly existing AMI
                             which gets removed during the run (because of identical names)
                             (only considered in combination with --remove-existing-ami)
@@ -50,6 +49,16 @@ Supported OPTIONS:
   --region <REGION>         specify region that should be used
                             (if unset defaults to the eu-west-1 zone)
   --skip-reboot             do not reboot ngcp system after installation finished
+
+Mandatory options for EC2-Classic (non-VPC/older generations) usage:
+
+  --elastic-ip <IP>         associate started instance ID with provided Elastic IP address
+
+Mandatory options for VPC usage:
+
+  --allocation-id <A-ID>    specify allocation ID for Elastic IP
+  --elastic-ip <IP>         associate started instance ID with provided Elastic IP address
+  --subnet <Subnet-ID>      specify subnet ID that should be used
 "
 }
 
@@ -170,7 +179,7 @@ remove_ami() {
   fi
 }
 
-CMDLINE_OPTS=ami-name:,base-ami:,copy-to-all-regions,elastic-ip:,help,instance-type:,keep-ami-snapshot,ngcp-release:,public,region:,remove-existing-ami,skip-reboot
+CMDLINE_OPTS=allocation-id:,ami-name:,base-ami:,copy-to-all-regions,elastic-ip:,help,instance-type:,keep-ami-snapshot,ngcp-release:,public,region:,remove-existing-ami,subnet:,skip-reboot
 
 _opt_temp=$(getopt --name "$0" -o +bch --long $CMDLINE_OPTS -- "$@")
 if [ $? -ne 0 ]; then
@@ -187,6 +196,9 @@ _opt_copy_to_all_regions=false
 
 while :; do
   case "$1" in
+  --allocation-id)
+    shift; ALLOCATION_ID="$1" # TODO eipalloc-0a96e07d4355e12fb
+    ;;
   --ami-name)
     shift; AMI_NAME="$1"
     ;;
@@ -223,6 +235,9 @@ while :; do
   --skip-reboot)
     _opt_skip_reboot=true
     ;;
+  --subnet)
+    shift; SUBNET="$1"
+    ;;
   --)
     shift; break
     ;;
@@ -236,8 +251,8 @@ done
 
 # if unset set sane defaults
 [ -n "$AWS_REGION" ] || AWS_REGION="eu-west-1"
-[ -n "$BASE_AMI" ] || BASE_AMI="ami-9ef001e9"
-[ -n "$INSTANCE_TYPE" ] || INSTANCE_TYPE="m1.medium"
+[ -n "$BASE_AMI" ] || BASE_AMI="ami-8a745cf3"
+[ -n "$INSTANCE_TYPE" ] || INSTANCE_TYPE="t2.medium"
 
 if [ -z "$AWS_ACCESS_KEY" ] ; then
   echo "AWS_ACCESS_KEY is unset, can not continue." >&2
@@ -366,12 +381,23 @@ cp /tmp/ngcp-installer.log /var/log/ngcp-installer.log
 EOF
 
 LOGFILE_RUN="$(mktemp)"
-ec2-run-instances --region "$AWS_REGION" \
-             --user-data-file "$USER_DATA_FILE" \
-             --group "$SECURITY_GROUP" \
-             --key "$KEY_NAME" \
-             --instance-type "$INSTANCE_TYPE" \
-             "$BASE_AMI" >"$LOGFILE_RUN"
+if [ -n "$SUBNET" ] ; then
+  echo "Starting EC2 instance in region $AWS_REGION, using VPC with subnet $SUBNET, instance-type $INSTANCE_TYPE + AMI $BASE_AMI"
+  ec2-run-instances --region "$AWS_REGION" \
+               --user-data-file "$USER_DATA_FILE" \
+               --subnet "$SUBNET" \
+               --key "$KEY_NAME" \
+               --instance-type "$INSTANCE_TYPE" \
+               "$BASE_AMI" >"$LOGFILE_RUN"
+else
+  echo "Starting EC2 instance in region $AWS_REGION, using EC2-Classic with security-group $SECURITY_GROUP, instance-type $INSTANCE_TYPE + AMI $BASE_AMI"
+  ec2-run-instances --region "$AWS_REGION" \
+               --user-data-file "$USER_DATA_FILE" \
+               --group "$SECURITY_GROUP" \
+               --key "$KEY_NAME" \
+               --instance-type "$INSTANCE_TYPE" \
+               "$BASE_AMI" >"$LOGFILE_RUN"
+fi
 
 INSTANCE_ID="$(awk '/INSTANCE/ {print $2}' "$LOGFILE_RUN")"
 if [ -z "$INSTANCE_ID" ] ; then
@@ -388,7 +414,10 @@ ec2-create-tags --region "$AWS_REGION" "$INSTANCE_ID" --tag Name="${AMI_NAME}/${
 # assign elastic IP address to instance,
 # enabling us to enable access to restricted
 # webserver areas
-if [ -n "$ELASTIC_IP" ] ; then
+if [ -n "$ALLOCATION_ID" ] ; then
+  echo "Associating elastic IP $ELASTIC_IP allocation ID ${ALLOCATION_ID} with instance ID $INSTANCE_ID"
+  ec2-associate-address --region "${AWS_REGION}" --allocation-id "${ALLOCATION_ID}" --instance "${INSTANCE_ID}"
+elif [ -n "$ELASTIC_IP" ] ; then
   echo "Associating elastic IP $ELASTIC_IP with instance ID $INSTANCE_ID"
   ec2-associate-address --region "${AWS_REGION}" "${ELASTIC_IP}" -i "${INSTANCE_ID}"
 fi
