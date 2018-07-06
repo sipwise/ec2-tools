@@ -411,12 +411,12 @@ ec2-create-tags --region "$AWS_REGION" "$INSTANCE_ID" --tag Purpose="$TAG_PURPOS
 # assign name (useful for web management console browsing)
 ec2-create-tags --region "$AWS_REGION" "$INSTANCE_ID" --tag Name="${AMI_NAME}/${DATE_STRING}/${JOB_NAME}/build_${BUILD_NUMBER}"
 
-STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id="$INSTANCE_ID" | awk '/INSTANCE/ {print $6}')"
+STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id="$INSTANCE_ID" | awk '/INSTANCE/ {print $5}')"
 echo "Starting instance ID $INSTANCE_ID for ngcp version $NGCP_VERSION"
 
 retry=120 # up to 10 minutes
 while [ "$STATUS" != "running" ] && [ $retry -ne 0 ] ; do
-  STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id="$INSTANCE_ID" | awk '/INSTANCE/ {print $6}')"
+  STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id="$INSTANCE_ID" | awk '/INSTANCE/ {print $5}')"
   retry=$((retry - 1))
   echo "Instance ID $INSTANCE_ID not running yet, checking again in 5 seconds ($retry retries left)."
   sleep 5
