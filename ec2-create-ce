@@ -476,7 +476,7 @@ else
   retry=120 # up to 10 minutes
   STATUS=""
   while [ "$STATUS" != "running" ] && [ $retry -ne 0 ] ; do
-    STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id="$INSTANCE_ID" | awk '/^INSTANCE/ {print $6}')"
+    STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id="$INSTANCE_ID" | awk '/^INSTANCE/ {print $5}')"
     retry=$((retry - 1))
     echo "Instance ID not yet running (status: ${STATUS}), checking again in 5 seconds ($retry retries left)."
     sleep 5
