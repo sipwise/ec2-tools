@@ -411,6 +411,23 @@ ec2-create-tags --region "$AWS_REGION" "$INSTANCE_ID" --tag Purpose="$TAG_PURPOS
 # assign name (useful for web management console browsing)
 ec2-create-tags --region "$AWS_REGION" "$INSTANCE_ID" --tag Name="${AMI_NAME}/${DATE_STRING}/${JOB_NAME}/build_${BUILD_NUMBER}"
 
+STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id="$INSTANCE_ID" | awk '/INSTANCE/ {print $5}')"
+echo "Starting instance ID $INSTANCE_ID for ngcp version $NGCP_VERSION"
+
+retry=120 # up to 10 minutes
+while [ "$STATUS" != "running" ] && [ $retry -ne 0 ] ; do
+  # NOTE: it's '$5' here, becoming '$6' later iff elastic IP is attached, this ugly parsing will stay until we switch to e.g. awscli
+  STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id="$INSTANCE_ID" | awk '/INSTANCE/ {print $5}')"
+  retry=$((retry - 1))
+  echo "Instance ID $INSTANCE_ID not running yet, checking again in 5 seconds ($retry retries left)."
+  sleep 5
+done
+
+if [ "$STATUS" != "running" ] ; then
+  echo "No further retries left and couldn't bring up system for AMI $BASE_AMI, giving up." >&2
+  bailout 1
+fi
+
 # assign elastic IP address to instance,
 # enabling us to enable access to restricted
 # webserver areas
@@ -420,22 +437,6 @@ if [ -n "$ALLOCATION_ID" ] ; then
 elif [ -n "$ELASTIC_IP" ] ; then
   echo "Associating elastic IP $ELASTIC_IP with instance ID $INSTANCE_ID"
   ec2-associate-address --region "${AWS_REGION}" "${ELASTIC_IP}" -i "${INSTANCE_ID}"
-fi
-
-STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id="$INSTANCE_ID" | awk '/INSTANCE/ {print $6}')"
-echo "Starting instance ID $INSTANCE_ID for ngcp version $NGCP_VERSION"
-
-retry=120 # up to 10 minutes
-while [ "$STATUS" != "running" ] && [ $retry -ne 0 ] ; do
-  STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id="$INSTANCE_ID" | awk '/INSTANCE/ {print $6}')"
-  retry=$((retry - 1))
-  echo "Instance ID $INSTANCE_ID not running yet, checking again in 5 seconds ($retry retries left)."
-  sleep 5
-done
-
-if [ "$STATUS" != "running" ] ; then
-  echo "No further retries left and couldn't bring up system for AMI $BASE_AMI, giving up." >&2
-  bailout 1
 fi
 
 HOSTNAME="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id="$INSTANCE_ID" | awk '/INSTANCE/ {print $4}')"
