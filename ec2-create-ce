@@ -433,10 +433,10 @@ fi
 # webserver areas
 if [ -n "$ALLOCATION_ID" ] ; then
   echo "Associating elastic IP $ELASTIC_IP allocation ID ${ALLOCATION_ID} with instance ID $INSTANCE_ID"
-  ec2-associate-address --region "${AWS_REGION}" --allocation-id "${ALLOCATION_ID}" --instance "${INSTANCE_ID}"
+  ec2-associate-address --region "${AWS_REGION}" --allocation-id "${ALLOCATION_ID}" --instance "${INSTANCE_ID}" --allow-reassociation
 elif [ -n "$ELASTIC_IP" ] ; then
   echo "Associating elastic IP $ELASTIC_IP with instance ID $INSTANCE_ID"
-  ec2-associate-address --region "${AWS_REGION}" "${ELASTIC_IP}" -i "${INSTANCE_ID}"
+  ec2-associate-address --region "${AWS_REGION}" "${ELASTIC_IP}" -i "${INSTANCE_ID}" --allow-reassociation
 fi
 
 HOSTNAME="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id="$INSTANCE_ID" | awk '/INSTANCE/ {print $4}')"
