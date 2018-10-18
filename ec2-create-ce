@@ -380,6 +380,25 @@ FORCE=yes ngcp-installer 2>&1 | tee -a /var/log/ngcp-installer-debug.log
 cp /tmp/ngcp-installer.log /var/log/ngcp-installer.log
 EOF
 
+init_configuration=false
+case "${NGCP_RELEASE}" in
+  2.8|3.*|mr[3-5].*|mr6.[0-4]*)
+    echo "*** ngcp release ${NGCP_RELEASE} doesn't have configuration tools"
+    ;;
+  *)
+    echo "*** ngcp release ${NGCP_RELEASE} has configuration tools"
+    init_configuration=true
+    ;;
+esac
+
+if "${init_configuration}" ; then
+  cat >> "${USER_DATA_FILE}" << EOF
+sed_regexp='s/^(export FORCE)=.+$/\1=yes/'
+sed -ri '${sed_regexp}' /etc/ngcp-installer/config_deploy.inc
+ngcp-initial-configuration
+EOF
+fi
+
 LOGFILE_RUN="$(mktemp)"
 if [ -n "$SUBNET" ] ; then
   echo "Starting EC2 instance in region $AWS_REGION, using VPC with subnet $SUBNET, instance-type $INSTANCE_TYPE + AMI $BASE_AMI"
@@ -443,9 +462,14 @@ HOSTNAME="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id="
 
 retry=360 # up to 30 minutes
 FINISHED_NGCP_CE_INSTALLATION=false
+grep_cmd="grep -q 'Installation finished. Thanks for choosing NGCP' /var/log/ngcp-installer-debug.log"
+if "${init_configuration}" ; then
+  grep_cmd="grep -q 'System was successfully configured, now you have the best VoIP software.' /var/log/ngcp-installer.log"
+fi
 while [ "$FINISHED_NGCP_CE_INSTALLATION" != "true" ] && [ $retry -ne 0 ] ; do
+  # shellcheck disable=SC2029
   ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@$HOSTNAME" \
-  "grep -q 'Installation finished. Thanks for choosing NGCP' /var/log/ngcp-installer-debug.log"
+    "${grep_cmd}"
   RC=$?
   if [ $RC -eq 0 ] ; then
     FINISHED_NGCP_CE_INSTALLATION=true
