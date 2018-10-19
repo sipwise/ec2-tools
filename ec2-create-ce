@@ -375,10 +375,9 @@ fi
 
 # workaround for mr4.2.1
 export HOME=/root/
-
-FORCE=yes ngcp-installer 2>&1 | tee -a /var/log/ngcp-installer-debug.log
-cp /tmp/ngcp-installer.log /var/log/ngcp-installer.log
 EOF
+
+
 
 init_configuration=false
 case "${NGCP_RELEASE}" in
@@ -395,7 +394,12 @@ if "${init_configuration}" ; then
   cat >> "${USER_DATA_FILE}" << EOF
 sed_regexp='s/^(export FORCE)=.+$/\1=yes/'
 sed -ri '${sed_regexp}' /etc/ngcp-installer/config_deploy.inc
-ngcp-initial-configuration
+ngcp-installer && ngcp-initial-configuration
+EOF
+else
+  cat >> "${USER_DATA_FILE}" << EOF
+FORCE=yes ngcp-installer 2>&1 | tee -a /var/log/ngcp-installer-debug.log
+[[ -f /tmp/ngcp-installer.log ]] && cp /tmp/ngcp-installer.log /var/log/ngcp-installer.log
 EOF
 fi
 
