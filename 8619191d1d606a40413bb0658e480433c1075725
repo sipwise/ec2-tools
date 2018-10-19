@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5ad58531_01b65adc",
+        "filename": "ec2-create-ce",
+        "patchSetId": 1
+      },
+      "lineNbr": 398,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2018-10-19T08:51:23Z",
+      "side": 1,
+      "message": "maybe \nngcp-installer \u0026\u0026 ngcp-initial-configuration\n\nto abort on the first one since there is no \u0027set -e\u0027",
+      "range": {
+        "startLine": 397,
+        "startChar": 0,
+        "endLine": 398,
+        "endChar": 26
+      },
+      "revId": "8619191d1d606a40413bb0658e480433c1075725",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5ad58531_e1ba2ec0",
+        "filename": "ec2-create-ce",
+        "patchSetId": 1
+      },
+      "lineNbr": 403,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2018-10-19T08:51:23Z",
+      "side": 1,
+      "message": "this will destroy the target log. isn\u0027t it?\nMaybe:\n  \n[ -f /tmp/ngcp-installer.log ] \u0026\u0026 cp /tmp/ngcp-installer.log /var/log/ngcp-installer.log",
+      "range": {
+        "startLine": 403,
+        "startChar": 27,
+        "endLine": 403,
+        "endChar": 54
+      },
+      "revId": "8619191d1d606a40413bb0658e480433c1075725",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
