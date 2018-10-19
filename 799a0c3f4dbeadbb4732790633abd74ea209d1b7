@@ -46,6 +46,30 @@
       "revId": "799a0c3f4dbeadbb4732790633abd74ea209d1b7",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "5ad58531_217ef6ae",
+        "filename": "ec2-create-ce",
+        "patchSetId": 2
+      },
+      "lineNbr": 396,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2018-10-19T11:58:49Z",
+      "side": 1,
+      "message": "You can do:\ncat \u003e\u003e \"${USER_DATA_FILE}\" \u003c\u003c \"EOF\"\n\nand remove \\ in \\$",
+      "parentUuid": "5ad58531_a171c6e2",
+      "range": {
+        "startLine": 396,
+        "startChar": 9,
+        "endLine": 396,
+        "endChar": 10
+      },
+      "revId": "799a0c3f4dbeadbb4732790633abd74ea209d1b7",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
