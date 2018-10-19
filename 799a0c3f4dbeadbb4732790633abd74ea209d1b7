@@ -1,0 +1,7 @@
+Verified+1: Jenkins Jenkins
+Code-Review+2: Alexander Lutay <alutay@sipwise.com>
+Submitted-by: Mykola Malkov <mmalkov@sipwise.com>
+Submitted-at: Fri, 19 Oct 2018 13:59:44 +0200
+Reviewed-on: http://gerrit.mgm.sipwise.com/24320
+Project: ec2-tools
+Branch: refs/heads/master
