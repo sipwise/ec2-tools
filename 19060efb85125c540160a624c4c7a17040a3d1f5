@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1adf8d57_1e2c6c49",
+        "filename": "ec2-create-ce",
+        "patchSetId": 1
+      },
+      "lineNbr": 397,
+      "author": {
+        "id": 1000045
+      },
+      "writtenOn": "2018-11-29T16:55:32Z",
+      "side": 1,
+      "message": "just add it to sed_regexp.\n\nthere is no any special symbols in expression so use common separation s/// pls",
+      "range": {
+        "startLine": 397,
+        "startChar": 8,
+        "endLine": 397,
+        "endChar": 44
+      },
+      "revId": "19060efb85125c540160a624c4c7a17040a3d1f5",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
