@@ -22,6 +22,30 @@
       "revId": "c359c7749ed472a25bbd214df57f7964366aa23b",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1adf8d57_391d02be",
+        "filename": "ec2-create-ce",
+        "patchSetId": 2
+      },
+      "lineNbr": 397,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2018-11-30T11:27:15Z",
+      "side": 1,
+      "message": "And this is a feature proved :-p\n  \nsed_regexp\u003d\u0027\u0027\nsed_regexp+\u003d\u0027s/^(export FORCE)\u003d.+$/\\1\u003dyes/;\u0027\nsed_regexp+\u003d\u0027s/^(export DHCP)\u003d.+$/\\1\u003dtrue/;\u0027",
+      "parentUuid": "1adf8d57_19d3663a",
+      "range": {
+        "startLine": 397,
+        "startChar": 0,
+        "endLine": 397,
+        "endChar": 41
+      },
+      "revId": "c359c7749ed472a25bbd214df57f7964366aa23b",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
