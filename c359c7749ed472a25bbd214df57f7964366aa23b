@@ -46,6 +46,30 @@
       "revId": "c359c7749ed472a25bbd214df57f7964366aa23b",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1adf8d57_832004f9",
+        "filename": "ec2-create-ce",
+        "patchSetId": 2
+      },
+      "lineNbr": 397,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2018-12-04T10:37:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "1adf8d57_391d02be",
+      "range": {
+        "startLine": 397,
+        "startChar": 0,
+        "endLine": 397,
+        "endChar": 41
+      },
+      "revId": "c359c7749ed472a25bbd214df57f7964366aa23b",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
