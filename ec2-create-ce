@@ -35,6 +35,8 @@ Supported OPTIONS:
                             (if unset defaults to ami-8a745cf3)
   --copy-to-all-regions     Copy resulting AMI to all available EC2 regions
   --help                    display this help text
+  --installer-url <URL>     Use ngcp-installer.deb, retrieved from specified URL
+                            (if unset defaults to http://deb.sipwise.com/spce/ngcp-installer-\$NGCP_RELEASE.deb)
   --instance-type <TYPE>    EC2 instance type that should be used for launching
                             (if unset defaults to t2.medium)
   --keep-ami-snapshot       do not remove snapshot used by a possibly existing AMI
@@ -214,6 +216,9 @@ while :; do
   --help)
     usage ; exit 0;
     ;;
+  --installer-url)
+    shift; INSTALLER_URL="$1"
+    ;;
   --instance-type)
     shift; INSTANCE_TYPE="$1"
     ;;
@@ -290,8 +295,12 @@ if [ -z "$NGCP_RELEASE" ] ; then
   echo "No ngcp release set, defaulting to ${NGCP_RELEASE}"
 fi
 
-if ! wget --quiet -O /tmp/ngcp-installer.deb "http://deb.sipwise.com/spce/ngcp-installer-${NGCP_RELEASE}.deb" ; then
-  echo "Couldn't retrieve http://deb.sipwise.com/spce/ngcp-installer-${NGCP_RELEASE}.deb - exiting" >&2
+if [ -z "${INSTALLER_URL}" ] ; then
+  INSTALLER_URL="http://deb.sipwise.com/spce/ngcp-installer-${NGCP_RELEASE}.deb"
+fi
+
+if ! wget --quiet -O /tmp/ngcp-installer.deb "${INSTALLER_URL}" ; then
+  echo "Couldn't retrieve ${INSTALLER_URL} - exiting" >&2
   exit 1
 fi
 
@@ -358,7 +367,7 @@ esac
 USER_DATA_FILE="$(mktemp)"
 cat > "$USER_DATA_FILE" << EOF
 #!/bin/bash
-wget -O /tmp/ngcp-installer.deb http://deb.sipwise.com/spce/ngcp-installer-${NGCP_RELEASE}.deb
+wget -O /tmp/ngcp-installer.deb ${INSTALLER_URL}
 dpkg -i /tmp/ngcp-installer.deb
 sed -i 's/cdn-aws.deb.debian.org/deb.debian.org/' /etc/apt/sources.list
 
