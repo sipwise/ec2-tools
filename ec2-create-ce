@@ -181,7 +181,7 @@ remove_ami() {
   fi
 }
 
-CMDLINE_OPTS=allocation-id:,ami-name:,base-ami:,copy-to-all-regions,elastic-ip:,help,instance-type:,keep-ami-snapshot,ngcp-release:,public,region:,remove-existing-ami,subnet:,skip-reboot
+CMDLINE_OPTS=allocation-id:,ami-name:,base-ami:,copy-to-all-regions,elastic-ip:,help,installer-url:,instance-type:,keep-ami-snapshot,ngcp-release:,public,region:,remove-existing-ami,subnet:,skip-reboot
 
 _opt_temp=$(getopt --name "$0" -o +bch --long $CMDLINE_OPTS -- "$@")
 if [ $? -ne 0 ]; then
