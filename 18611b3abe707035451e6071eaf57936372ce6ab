@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1adf8d57_4ebfcad0",
+        "filename": "ec2-create-ce",
+        "patchSetId": 1
+      },
+      "lineNbr": 408,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2018-12-21T14:20:38Z",
+      "side": 1,
+      "message": "In this case it will be executed in background. Is it fine or we should wait for the script here?",
+      "range": {
+        "startLine": 408,
+        "startChar": 25,
+        "endLine": 408,
+        "endChar": 28
+      },
+      "revId": "18611b3abe707035451e6071eaf57936372ce6ab",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
