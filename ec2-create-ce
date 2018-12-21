@@ -405,7 +405,19 @@ sed_regexp=''
 sed_regexp+='s/^(export FORCE)=.+$/\1=yes/;'
 sed_regexp+='s/^(export DHCP)=.+$/\1=true/;'
 sed -ri "\${sed_regexp}" /etc/ngcp-installer/config_deploy.inc
-ngcp-installer && ngcp-initial-configuration
+ngcp-installer && screen -dm bash -c 'ngcp-initial-configuration'
+attempt=0
+max_attempt=1000
+rc=1
+while [[ "${attempt}" -lt "${max_attempt}" ]]; do
+  if grep 'System configured' -q /etc/sipwise_ngcp_version; then
+    rc=0
+    break
+  fi
+  sleep 1
+  attempt=$((attempt + 1))
+done
+exit ${rc}
 EOF
 else
   cat >> "${USER_DATA_FILE}" << EOF
