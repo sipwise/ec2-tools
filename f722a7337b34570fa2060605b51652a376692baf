@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1adf8d57_0eb0a2f3",
+        "filename": "ec2-create-ce",
+        "patchSetId": 2
+      },
+      "lineNbr": 412,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2018-12-21T15:04:56Z",
+      "side": 1,
+      "message": "This doesn\u0027t work as-is AFAICT, as the variables are replaced during generation of $USER_DATA_FILE and not during actual runtime.",
+      "revId": "f722a7337b34570fa2060605b51652a376692baf",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
