@@ -405,7 +405,7 @@ sed_regexp=''
 sed_regexp+='s/^(export FORCE)=.+$/\1=yes/;'
 sed_regexp+='s/^(export DHCP)=.+$/\1=true/;'
 sed -ri "\${sed_regexp}" /etc/ngcp-installer/config_deploy.inc
-ngcp-installer && ngcp-initial-configuration
+ngcp-installer && screen -dm bash -c 'ngcp-initial-configuration'
 EOF
 else
   cat >> "${USER_DATA_FILE}" << EOF
