@@ -1,0 +1,7 @@
+Verified+1: Jenkins Jenkins
+Code-Review+2: Michael Prokop <mprokop@sipwise.com>
+Submitted-by: Mykola Malkov <mmalkov@sipwise.com>
+Submitted-at: Tue, 25 Dec 2018 09:53:37 +0100
+Reviewed-on: http://gerrit.mgm.sipwise.com/25929
+Project: ec2-tools
+Branch: refs/heads/master
