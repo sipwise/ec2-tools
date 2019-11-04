@@ -371,6 +371,11 @@ wget -O /tmp/ngcp-installer.deb ${INSTALLER_URL}
 dpkg -i /tmp/ngcp-installer.deb
 sed -i 's/cdn-aws.deb.debian.org/deb.debian.org/' /etc/apt/sources.list
 
+if [ -f /etc/apt/sources.list.d/backports.list ] && grep -q 'jessie-backports' /etc/apt/sources.list.d/backports.list ; then
+  echo "jessie-backports no longer exists, removing /etc/apt/sources.list.d/backports.list"
+  rm -f /etc/apt/sources.list.d/backports.list
+fi
+
 if [ "$SYSTEMD_SUPPORT" = "false" ] && [ -d /run/systemd/system ] ; then
   echo "Switching from systemd to sysvinit (pre-reboot)"
   apt update
