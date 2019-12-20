@@ -1,0 +1,7 @@
+Verified+1: Jenkins Jenkins
+Code-Review+2: Sergii Kipot <skipot@sipwise.com>
+Submitted-by: Michael Prokop <mprokop@sipwise.com>
+Submitted-at: Fri, 20 Dec 2019 18:38:17 +0100
+Reviewed-on: http://gerrit.mgm.sipwise.com/c/ec2-tools/+/36521
+Project: ec2-tools
+Branch: refs/heads/master
