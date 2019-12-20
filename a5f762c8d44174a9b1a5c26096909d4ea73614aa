@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "b2ff79cb_589adcce",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2019-12-20T17:28:18Z",
+      "side": 1,
+      "message": "I\u0027m aware, but we don\u0027t touch ec2-tools if there\u0027s nothing broken and if I don\u0027t do this right now it won\u0027t happen ever and Mykola will complain about coding style :p",
+      "parentUuid": "d9063ca9_c448ef15",
+      "range": {
+        "startLine": 19,
+        "startChar": 10,
+        "endLine": 19,
+        "endChar": 68
+      },
+      "revId": "a5f762c8d44174a9b1a5c26096909d4ea73614aa",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "35eaaa35_146d7a6c",
         "filename": "/COMMIT_MSG",
         "patchSetId": 3
@@ -36,6 +60,30 @@
       "writtenOn": "2019-12-20T17:26:32Z",
       "side": 1,
       "message": "regions",
+      "range": {
+        "startLine": 22,
+        "startChar": 40,
+        "endLine": 22,
+        "endChar": 48
+      },
+      "revId": "a5f762c8d44174a9b1a5c26096909d4ea73614aa",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "d9e89750_0caf26c3",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2019-12-20T17:28:18Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "35eaaa35_146d7a6c",
       "range": {
         "startLine": 22,
         "startChar": 40,
