@@ -1,21 +1,13 @@
 #!/bin/bash
 
-export EC2_HOME="/usr/share/ec2/ec2-api-tools"
-export JAVA_HOME="$(dirname "$(dirname "$(readlink /etc/alternatives/java)")")"
-export PATH="$PATH:${EC2_HOME}/bin"
 export TZ="UTC"
 
 # defaults
-[ -n "$KEY_NAME" ] || KEY_NAME="jenkins-ngcp-create-ami"
-[ -n "$KEY_FILE" ] || KEY_FILE="${HOME}/.ssh/${KEY_NAME}.pem"
-[ -n "$SECURITY_GROUP" ] || SECURITY_GROUP="sipwise-only"
-[ -n "$TAG_PURPOSE" ] || TAG_PURPOSE="ngcp-create-ce-ami"
+[ -n "${KEY_NAME}" ] || KEY_NAME="jenkins-ngcp-create-ami"
+[ -n "${KEY_FILE}" ] || KEY_FILE="${HOME}/.ssh/${KEY_NAME}.pem"
+[ -n "${SECURITY_GROUP}" ] || SECURITY_GROUP="sipwise-only"
+[ -n "${TAG_PURPOSE}" ] || TAG_PURPOSE="ngcp-create-ce-ami"
 DATE_STRING=$(date +%Y-%m-%d_%H:%M)
-
-# retrieve AWS_* environment variables
-if [ -r "$HOME/.ec2-create-ngcp" ] ; then
-  source  "$HOME/.ec2-create-ngcp"
-fi
 
 rm -f ec2_report.txt
 
@@ -67,19 +59,19 @@ Mandatory options for VPC usage:
 # generate report for usage in other scripts/jenkins jobs
 generate_ec2_report() {
   cat > ec2_report.txt << EOF
-instance_hostname=$HOSTNAME
-instance_id=$INSTANCE_ID
-aws_region=$AWS_REGION
-ami_id=$AMI_ID
-ami_name=$AMI_NAME
-ami_description=$AMI_DESCRIPTION
-ami_public=$_opt_public
-ami_instance_type=$INSTANCE_TYPE
-ngcp_version=$NGCP_VERSION
+instance_hostname=${HOSTNAME}
+instance_id=${INSTANCE_ID}
+aws_region=${AWS_REGION}
+ami_id=${AMI_ID}
+ami_name=${AMI_NAME}
+ami_description=${AMI_DESCRIPTION}
+ami_public=${_opt_public}
+ami_instance_type=${INSTANCE_TYPE}
+ngcp_version=${NGCP_VERSION}
 
 # for usage in Jenkins
-testhost=$TESTHOST
-vmversion=$VMVERSION
+testhost=${TESTHOST}
+vmversion=${VMVERSION}
 EOF
 }
 
@@ -91,13 +83,14 @@ bailout() {
   # to Jenkins downstream job ec2-ami-stop
   generate_ec2_report
 
-  exit "$EXIT"
+  exit "${EXIT}"
 }
-trap bailout 1 2 3 3 6 9 14 15
+trap bailout 1 2 3 3 6 14 15
 
 # NOTE: this is non-blocking currently, so we're not waiting until everything is finished here
 copy_ami() {
-  local logfile=$(mktemp)
+  local logfile
+  logfile=$(mktemp)
 
   local source_region="$1"
   local ami_id="$2"
@@ -105,33 +98,55 @@ copy_ami() {
   local ami_description="$4"
 
   local target_region
-  for target_region in us-east-1 us-west-2 us-west-1 eu-central-1 eu-west-1 ap-southeast-1 ap-southeast-2 ap-northeast-1 sa-east-1 ; do
-    case "$target_region" in
-      "$source_region")
-	echo "*** Skipping region $target_region as source and destination region are the same ones. ***"
-	echo "AMI ID for region ${target_region}: ${ami_id}" >> ec2_report_amis.txt
-	;;
+  for target_region in \
+    ap-northeast-1   \
+    ap-southeast-1   \
+    ap-southeast-2   \
+    eu-central-1     \
+    eu-west-1        \
+    sa-east-1        \
+    us-east-1        \
+    us-west-1        \
+    us-west-2
+    ## currently unused ones:
+    # ap-east-1      \
+    # ap-northeast-2 \
+    # ap-south-1     \
+    # ca-central-1   \
+    # eu-north-1     \
+    # eu-west-2      \
+    # eu-west-3      \
+    # me-south-1     \
+    # us-east-2      \
+  do
+    case "${target_region}" in
+      "${source_region}")
+        echo "*** Skipping region ${target_region} as source and destination region are the same ones. ***"
+        echo "AMI ID for region ${target_region}: ${ami_id}" >> ec2_report_amis.txt
+        ;;
       *)
-        remove_ami "$target_region" "$ami_name"
+        remove_ami "${target_region}" "${ami_name}"
 
-	echo "*** Copying AMI ID $ami_id from $source_region to $target_region (note: we are NOT blocking/waiting until this is fully finished!) ***"
-	ec2-copy-image --source-region "${source_region}" --region "${target_region}" --source-ami-id "$ami_id" -n "$ami_name" -d "$ami_description" > "$logfile"
+        echo "*** Copying AMI ID ${ami_id} from ${source_region} to ${target_region} (note: we are NOT blocking/waiting until this is fully finished!) ***"
+        aws ec2 copy-image --source-image-id "${ami_id}" --source-region "${source_region}" --region "${target_region}" --name "${ami_name}" --description "${ami_description}" > "${logfile}"
+
         if [ $? -ne 0 ]; then
-	  echo "Error copying AMI ID $ami_id from $source_region to $target_region" >&2
-	  return 1
-	fi
+          echo "Error copying AMI ID ${ami_id} from ${source_region} to ${target_region}" >&2
+          return 1
+        fi
 
-	local ami_id_copy="$(awk '/^IMAGE/ {print $2}' "$logfile")"
+        local ami_id_copy
+        ami_id_copy="$(jq -r '.ImageId' "${logfile}")"
 
-	if [ -z "$ami_id_copy" ] ; then
-	  echo "Error retrieving AMI ID $ami_id for region ${target_region}:"
-	  cat "$logfile" >&2
-	  return 1
-	fi
+        if [ -z "${ami_id_copy}" ] ; then
+          echo "Error retrieving AMI ID ${ami_id} for region ${target_region}:"
+          cat "${logfile}" >&2
+          return 1
+        fi
 
-	# for usage as global report
-	echo "AMI ID for region ${target_region}: $ami_id_copy" >> ec2_report_amis.txt
-	;;
+        # for usage as global report
+        echo "AMI ID for region ${target_region}: ${ami_id_copy}" >> ec2_report_amis.txt
+        ;;
     esac
   done
 }
@@ -140,40 +155,43 @@ remove_ami() {
   local aws_region="$1"
   local ami_name="$2"
 
-  if ! ec2-describe-images --region "$aws_region" --filter "name=${ami_name}" | grep -q . ; then
+  if ! aws ec2 describe-images --region "${aws_region}" --filter "Name=name,Values=${ami_name}" | jq -r '.Images[].ImageId' | grep -q . ; then
     return 0 # no AMIs with given name present
   fi
 
   echo "*** Warning, AMI with name ${ami_name} exists already."
-  if ! $_opt_remove_existing_ami ; then
+  if ! ${_opt_remove_existing_ami} ; then
     return 0
   fi
 
-  local existing_ami_id=$(ec2-describe-images --region "$aws_region" --filter "name=${ami_name}" | awk '/IMAGE/ {print $2}')
+  local existing_ami_id
+  existing_ami_id=$(aws ec2 describe-images --region "${aws_region}" --filter "Name=name,Values=${ami_name}" | jq -r '.Images[].ImageId')
 
-  if [ -z "$existing_ami_id" ] ; then
+  if [ -z "${existing_ami_id}" ] ; then
     echo "Problem retrieving AMI ID for AMI with name ${ami_name}." >&2
     return 1
   fi
 
   # we need to identify which snapshot is used by the AMI so we can remove it after "deregister"-ing the AMI
-  local ami_snapshot=$(ec2-describe-images --region "$aws_region" --filter "name=${ami_name}" | awk '/^BLOCKDEVICEMAPPING.*EBS/ {print $4}')
-  if [ -z "$ami_snapshot" ] ; then
+  local ami_snapshot
+  ami_snapshot=$(aws ec2 describe-images --region "${aws_region}" --filter "Name=name,Values=${ami_name}" | jq -r '.Images[].BlockDeviceMappings[].Ebs.SnapshotId')
+
+  if [ -z "${ami_snapshot}" ] ; then
     echo "Problem retrieving snapshot ID for AMI with name ${ami_name}." >&2
     return 1
   fi
 
   echo "*** Option --remove-existing-ami is set, removing existing AMI with ID ${existing_ami_id} ***"
-  ec2-deregister --region "$aws_region" "${existing_ami_id}"
+  aws ec2 deregister-image --region "${aws_region}" --image-id "${existing_ami_id}"
   if [ $? -ne 0 ] ; then
     echo "Noticed problem when trying to delete AMI with name ${ami_name}." >&2
     return 1
   fi
 
-  if $_opt_keep_ami_snapshot ; then
+  if ${_opt_keep_ami_snapshot} ; then
     echo "*** Option --keep-ami-snapshot is set, not removing AMI snapshot ${ami_snapshot}. ***"
   else
-    ec2-delete-snapshot --region "$aws_region" "${ami_snapshot}"
+    aws ec2 delete-snapshot --region "${aws_region}" --snapshot-id "${ami_snapshot}"
     if [ $? -ne 0 ] ; then
       echo "Noticed problem when trying to delete snapshot ${ami_snapshot} for 'deregister'-ed AMI with name ${ami_name}." >&2
       return 1
@@ -183,12 +201,12 @@ remove_ami() {
 
 CMDLINE_OPTS=allocation-id:,ami-name:,base-ami:,copy-to-all-regions,elastic-ip:,help,installer-url:,instance-type:,keep-ami-snapshot,ngcp-release:,public,region:,remove-existing-ami,subnet:,skip-reboot
 
-_opt_temp=$(getopt --name "$0" -o +bch --long $CMDLINE_OPTS -- "$@")
+_opt_temp=$(getopt --name "$0" -o +bch --long ${CMDLINE_OPTS} -- "$@")
 if [ $? -ne 0 ]; then
   echo "Try '$0 --help' for more information." >& 2
   exit 1
 fi
-eval set -- "$_opt_temp"
+eval set -- "${_opt_temp}"
 
 _opt_keep_ami_snapshot=false
 _opt_public=false
@@ -199,7 +217,7 @@ _opt_copy_to_all_regions=false
 while :; do
   case "$1" in
   --allocation-id)
-    shift; ALLOCATION_ID="$1" # TODO eipalloc-0a96e07d4355e12fb
+    shift; ALLOCATION_ID="$1"
     ;;
   --ami-name)
     shift; AMI_NAME="$1"
@@ -255,21 +273,16 @@ while :; do
 done
 
 # if unset set sane defaults
-[ -n "$AWS_REGION" ] || AWS_REGION="eu-west-1"
-[ -n "$BASE_AMI" ] || BASE_AMI="ami-8a745cf3"
-[ -n "$INSTANCE_TYPE" ] || INSTANCE_TYPE="t2.medium"
+[ -n "${AWS_REGION}" ] || AWS_REGION="eu-west-1"
+[ -n "${BASE_AMI}" ] || BASE_AMI="ami-0e9cc061cd3259f22"
+[ -n "${INSTANCE_TYPE}" ] || INSTANCE_TYPE="m5.large"
 
-if [ -z "$AWS_ACCESS_KEY" ] ; then
-  echo "AWS_ACCESS_KEY is unset, can not continue." >&2
+if ! [ -r "${HOME}"/.aws/config ] ; then
+  echo "awscli seems to be unconfigured, ensure ${HOME}/.aws/config exists." >&2
   exit 1
 fi
 
-if [ -z "$AWS_SECRET_KEY" ] ; then
-  echo "AWS_SECRET_KEY is unset, can not continue." >&2
-  exit 1
-fi
-
-if ! [ -r "$KEY_FILE" ] ; then
+if ! [ -r "${KEY_FILE}" ] ; then
   echo "Could not read key file ${KEY_FILE}, can not continue." >&2
   exit 1
 fi
@@ -277,20 +290,25 @@ fi
 check4progs(){
   local RC=''
   for arg in "$@" ; do
-    which "$arg" >/dev/null 2>&1 || RC="$arg"
+    which "${arg}" >/dev/null 2>&1 || RC="${arg}"
   done
-  if [ -n "$RC" ] ; then
-    echo "$RC not found/executable" >&2
+  if [ -n "${RC}" ] ; then
+    echo "${RC} not found/executable" >&2
     return 1
   fi
 }
 
-if ! check4progs ec2-run-instances  || ! check4progs ec2-create-image || ! check4progs ec2-describe-instances ; then
-  echo "Required tools not found, forgot to install ec2-api-tools?" >&2
+if ! check4progs jq ; then
+  echo "Required tool jq not found, forgot to install jq?" >&2
   exit 1
 fi
 
-if [ -z "$NGCP_RELEASE" ] ; then
+if ! check4progs aws ; then
+  echo "Required tool aws not found, forgot to install awscli?" >&2
+  exit 1
+fi
+
+if [ -z "${NGCP_RELEASE}" ] ; then
   NGCP_RELEASE="latest"
   echo "No ngcp release set, defaulting to ${NGCP_RELEASE}"
 fi
@@ -307,23 +325,24 @@ fi
 if dpkg --info /tmp/ngcp-installer.deb | grep -q 'mr' ; then
   NGCP_VERSION=$(dpkg --info /tmp/ngcp-installer.deb | awk '/^ Version: / {print $2}' | sed 's/.*mr/mr/')
 else # older versions don't have the mr string in the version information, so let's reuse provided ngcp release
-  NGCP_VERSION="$NGCP_RELEASE"
+  NGCP_VERSION="${NGCP_RELEASE}"
   echo "*** No 'mr' string inside version information of installer found... ***"
   echo "*** ... falling back to ngcp release version information [${NGCP_VERSION}] ***"
 fi
 
-if [ -z "$NGCP_VERSION" ] ; then
+if [ -z "${NGCP_VERSION}" ] ; then
   echo "Couldn't identify ngcp version, exiting." >&2
   bailout 1
 fi
 
 # ensure we don't have any builds running already, see TT#30565
-NUM_RUNNING_INSTANCES=$(ec2-describe-instances --region "${AWS_REGION}" \
-                       --filter "instance-state-name=running" \
-		       --filter "tag:Purpose=${TAG_PURPOSE}" 2>/dev/null | \
-		       grep -c '^INSTANCE')
-if [ "$NUM_RUNNING_INSTANCES" -gt 0 ] ; then
-  echo "Error: there are running instances with tag $TAG_PURPOSE in region $AWS_REGION"  >&2
+NUM_RUNNING_INSTANCES=$(aws ec2 describe-instances --region "${AWS_REGION}"   \
+                       --filter "Name=instance-state-name,Values=running"     \
+                                "Name=tag:Purpose,Values=${TAG_PURPOSE}"    | \
+                                jq '.Reservations[].Instances[].InstanceId' | \
+                                wc -l)
+if [ "${NUM_RUNNING_INSTANCES}" -gt 0 ] ; then
+  echo "Error: there are running instances with tag ${TAG_PURPOSE} in region ${AWS_REGION}"  >&2
   echo "Exiting to ensure we don't have instances running due to Jenkins job failures."  >&2
   echo "Please ensure that those instances are stopped before trying to build new ones." >&2
   echo "In case of questions contact someone with according AWS permissions."            >&2
@@ -332,16 +351,16 @@ fi
 
 # if AMI_NAME is set to "none" then we get defaults from Jenkins, if
 # so then use the ngcp-ce-... naming schema
-if [ -n "$AMI_NAME" ] && [ "$AMI_NAME" != "none" ] ; then
-  echo "*** AMI_NAME is set to $AMI_NAME ***"
+if [ -n "${AMI_NAME}" ] && [ "${AMI_NAME}" != "none" ] ; then
+  echo "*** AMI_NAME is set to ${AMI_NAME} ***"
 else
   # use just "ngcp-ce-mr3.3.1.0" if we get something like
   # "ngcp-ce-mr3.3.1.0+0~20140528091259.443+wheezy~1.gbpf74599"
   # as NGCP_VERSION
   AMI_NAME="ngcp-ce-${NGCP_VERSION%%\+*}"
-  echo "*** AMI_NAME is unset yet, defaulting to $AMI_NAME"
+  echo "*** AMI_NAME is unset yet, defaulting to ${AMI_NAME}"
 
-  case "$AMI_NAME" in
+  case "${AMI_NAME}" in
     ngcp-ce-mr*.*.*.*)
       echo "*** Identified hotfix version string in AMI name [${AMI_NAME}]... ***"
       AMI_NAME="${AMI_NAME%.*}"
@@ -353,19 +372,19 @@ fi
 
 AMI_DESCRIPTION="Official sip:provider CE AMI for release ${NGCP_VERSION} [${DATE_STRING}]"
 
-case "$NGCP_RELEASE" in
+case "${NGCP_RELEASE}" in
   2.*|3.*|mr3.*|mr4.*|mr5.*|mr6.0*|mr6.1*)
-    echo "*** ngcp release $NGCP_RELEASE doesn't support systemd"
+    echo "*** ngcp release ${NGCP_RELEASE} doesn't support systemd"
     SYSTEMD_SUPPORT=false
     ;;
   *)
-    echo "*** ngcp release $NGCP_RELEASE supports systemd"
+    echo "*** ngcp release ${NGCP_RELEASE} supports systemd"
     SYSTEMD_SUPPORT=true
     ;;
 esac
 
 USER_DATA_FILE="$(mktemp)"
-cat > "$USER_DATA_FILE" << EOF
+cat > "${USER_DATA_FILE}" << EOF
 #!/bin/bash
 wget -O /tmp/ngcp-installer.deb ${INSTALLER_URL}
 dpkg -i /tmp/ngcp-installer.deb
@@ -376,7 +395,7 @@ if [ -f /etc/apt/sources.list.d/backports.list ] && grep -q 'jessie-backports' /
   rm -f /etc/apt/sources.list.d/backports.list
 fi
 
-if [ "$SYSTEMD_SUPPORT" = "false" ] && [ -d /run/systemd/system ] ; then
+if [ "${SYSTEMD_SUPPORT}" = "false" ] && [ -d /run/systemd/system ] ; then
   echo "Switching from systemd to sysvinit (pre-reboot)"
   apt update
   apt install --yes sysvinit-core
@@ -431,66 +450,73 @@ FORCE=yes ngcp-installer 2>&1 | tee -a /var/log/ngcp-installer-debug.log
 EOF
 fi
 
+echo "*** Generated the following user-data file:"
+cat "${USER_DATA_FILE}"
+echo "*** end of user-data-file ***"
+
 LOGFILE_RUN="$(mktemp)"
-if [ -n "$SUBNET" ] ; then
-  echo "Starting EC2 instance in region $AWS_REGION, using VPC with subnet $SUBNET, instance-type $INSTANCE_TYPE + AMI $BASE_AMI"
-  ec2-run-instances --region "$AWS_REGION" \
-               --user-data-file "$USER_DATA_FILE" \
-               --subnet "$SUBNET" \
-               --key "$KEY_NAME" \
-               --instance-type "$INSTANCE_TYPE" \
-               "$BASE_AMI" >"$LOGFILE_RUN"
+if [ -n "${SUBNET}" ] ; then
+  echo "Starting EC2 instance in region ${AWS_REGION}, using VPC with subnet ${SUBNET}, instance-type ${INSTANCE_TYPE} + AMI ${BASE_AMI}"
+  aws ec2 run-instances --region "${AWS_REGION}" \
+               --user-data "file://${USER_DATA_FILE}" \
+               --subnet "${SUBNET}" \
+               --key "${KEY_NAME}" \
+               --instance-type "${INSTANCE_TYPE}" \
+               --image-id "${BASE_AMI}" >"${LOGFILE_RUN}"
 else
-  echo "Starting EC2 instance in region $AWS_REGION, using EC2-Classic with security-group $SECURITY_GROUP, instance-type $INSTANCE_TYPE + AMI $BASE_AMI"
-  ec2-run-instances --region "$AWS_REGION" \
-               --user-data-file "$USER_DATA_FILE" \
-               --group "$SECURITY_GROUP" \
-               --key "$KEY_NAME" \
-               --instance-type "$INSTANCE_TYPE" \
-               "$BASE_AMI" >"$LOGFILE_RUN"
+  echo "Starting EC2 instance in region ${AWS_REGION}, using EC2-Classic with security-group ${SECURITY_GROUP}, instance-type ${INSTANCE_TYPE} + AMI ${BASE_AMI}"
+  aws ec2 run-instances --region "${AWS_REGION}" \
+               --user-data "file://${USER_DATA_FILE}" \
+               --group "${SECURITY_GROUP}" \
+               --key "${KEY_NAME}" \
+               --instance-type "${INSTANCE_TYPE}" \
+               --image-id "${BASE_AMI}" >"${LOGFILE_RUN}"
 fi
 
-INSTANCE_ID="$(awk '/INSTANCE/ {print $2}' "$LOGFILE_RUN")"
-if [ -z "$INSTANCE_ID" ] ; then
-  echo "Could not identify instance ID, exiting." >&2
+INSTANCE_ID="$(jq -r '.Instances[].InstanceId'  "${LOGFILE_RUN}")"
+if [ -z "${INSTANCE_ID}" ] ; then
+  echo "Error: Could not identify instance ID, exiting." >&2
   exit 1
 fi
 
 # assign tag so we de-register again the AMI if needed
-ec2-create-tags --region "$AWS_REGION" "$INSTANCE_ID" --tag Purpose="$TAG_PURPOSE"
+aws ec2 create-tags --region "${AWS_REGION}" --resources "${INSTANCE_ID}" --tag "Key=Purpose,Value=${TAG_PURPOSE}"
 
 # assign name (useful for web management console browsing)
-ec2-create-tags --region "$AWS_REGION" "$INSTANCE_ID" --tag Name="${AMI_NAME}/${DATE_STRING}/${JOB_NAME}/build_${BUILD_NUMBER}"
+[ -z "${JOB_NAME:-}" ]     && JOB_NAME="unset"                     # running outside of Jenkins
+[ -z "${BUILD_NUMBER:-}" ] && BUILD_NUMBER="executed-by-$(whoami)" # running outside of Jenkins
+aws ec2 create-tags --region "${AWS_REGION}" --resources "${INSTANCE_ID}" --tag "Key=Name,Value=${AMI_NAME}/${DATE_STRING}/${JOB_NAME}/build_${BUILD_NUMBER}"
 
-STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id="$INSTANCE_ID" | awk '/INSTANCE/ {print $5}')"
-echo "Starting instance ID $INSTANCE_ID for ngcp version $NGCP_VERSION"
+echo "Starting instance ID ${INSTANCE_ID} for ngcp version ${NGCP_VERSION}"
+
+STATUS="$(aws ec2 describe-instances --region ${AWS_REGION} --filter "Name=instance-id,Values=${INSTANCE_ID}" | jq -r '.Reservations[].Instances[].State.Name')"
 
 retry=120 # up to 10 minutes
-while [ "$STATUS" != "running" ] && [ $retry -ne 0 ] ; do
-  # NOTE: it's '$5' here, becoming '$6' later iff elastic IP is attached, this ugly parsing will stay until we switch to e.g. awscli
-  STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id="$INSTANCE_ID" | awk '/INSTANCE/ {print $5}')"
+while [ "${STATUS}" != "running" ] && [ ${retry} -ne 0 ] ; do
+  STATUS="$(aws ec2 describe-instances --region ${AWS_REGION} --filter "Name=instance-id,Values=${INSTANCE_ID}" | jq -r '.Reservations[].Instances[].State.Name')"
+
   retry=$((retry - 1))
-  echo "Instance ID $INSTANCE_ID not running yet, checking again in 5 seconds ($retry retries left)."
+  echo "Instance ID ${INSTANCE_ID} not running yet, checking again in 5 seconds (${retry} retries left)."
   sleep 5
 done
 
-if [ "$STATUS" != "running" ] ; then
-  echo "No further retries left and couldn't bring up system for AMI $BASE_AMI, giving up." >&2
+if [ "${STATUS}" != "running" ] ; then
+  echo "No further retries left and couldn't bring up system for AMI ${BASE_AMI}, giving up." >&2
   bailout 1
 fi
 
 # assign elastic IP address to instance,
 # enabling us to enable access to restricted
 # webserver areas
-if [ -n "$ALLOCATION_ID" ] ; then
-  echo "Associating elastic IP $ELASTIC_IP allocation ID ${ALLOCATION_ID} with instance ID $INSTANCE_ID"
-  ec2-associate-address --region "${AWS_REGION}" --allocation-id "${ALLOCATION_ID}" --instance "${INSTANCE_ID}" --allow-reassociation
-elif [ -n "$ELASTIC_IP" ] ; then
-  echo "Associating elastic IP $ELASTIC_IP with instance ID $INSTANCE_ID"
-  ec2-associate-address --region "${AWS_REGION}" "${ELASTIC_IP}" -i "${INSTANCE_ID}" --allow-reassociation
+if [ -n "${ALLOCATION_ID}" ] ; then
+  echo "Associating elastic IP ${ELASTIC_IP} allocation ID ${ALLOCATION_ID} with instance ID ${INSTANCE_ID}"
+  aws ec2 associate-address --region "${AWS_REGION}" --allocation-id "${ALLOCATION_ID}" --instance "${INSTANCE_ID}" --allow-reassociation
+elif [ -n "${ELASTIC_IP}" ] ; then
+  echo "Associating elastic IP ${ELASTIC_IP} with instance ID ${INSTANCE_ID}"
+  aws ec2 associate-address --region "${AWS_REGION}" "${ELASTIC_IP}" -i "${INSTANCE_ID}" --allow-reassociation
 fi
 
-HOSTNAME="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id="$INSTANCE_ID" | awk '/INSTANCE/ {print $4}')"
+HOSTNAME="$(aws ec2 describe-instances --region ${AWS_REGION} --filter "Name=instance-id,Values=${INSTANCE_ID}" | jq -r '.Reservations[].Instances[] | {PublicDnsName} | [.[]] | .[0]')"
 
 retry=360 # up to 30 minutes
 FINISHED_NGCP_CE_INSTALLATION=false
@@ -498,24 +524,24 @@ grep_cmd="grep -q 'Installation finished. Thanks for choosing NGCP' /var/log/ngc
 if "${init_configuration}" ; then
   grep_cmd="grep -q 'System was successfully configured, now you have the best VoIP software.' /var/log/ngcp-installer.log"
 fi
-while [ "$FINISHED_NGCP_CE_INSTALLATION" != "true" ] && [ $retry -ne 0 ] ; do
+while [ "${FINISHED_NGCP_CE_INSTALLATION}" != "true" ] && [ ${retry} -ne 0 ] ; do
   # shellcheck disable=SC2029
-  ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@$HOSTNAME" \
+  ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@${HOSTNAME}" \
     "${grep_cmd}"
   RC=$?
-  if [ $RC -eq 0 ] ; then
+  if [ ${RC} -eq 0 ] ; then
     FINISHED_NGCP_CE_INSTALLATION=true
   else
-    echo "ngcp installation not yet finished, checking again in 5 seconds ($retry retries left)."
+    echo "ngcp installation not yet finished, checking again in 5 seconds (${retry} retries left)."
     sleep 5
     retry=$((retry - 1))
   fi
 done
 
 echo "Trying to retrieve ngcp-installer log files"
-scp -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@$HOSTNAME":/var/log/ngcp-installer\*log ./ || true
+scp -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@${HOSTNAME}":/var/log/ngcp-installer\*log ./ || true
 
-if [ "$FINISHED_NGCP_CE_INSTALLATION" = "true" ] ; then
+if [ "${FINISHED_NGCP_CE_INSTALLATION}" = "true" ] ; then
   echo "Successfully finished ngcp CE installation (version ${NGCP_VERSION})."
 else
   echo "No further retries left and couldn't finish ngcp CE installation (version ${NGCP_VERSION}), giving up." >&2
@@ -523,126 +549,130 @@ else
 fi
 
 #Remove temporary crontab
-ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@$HOSTNAME" "sudo crontab -l || sudo crontab -r"
+ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@${HOSTNAME}" "sudo crontab -l || sudo crontab -r"
 
 # reboot CE system
-if $_opt_skip_reboot ; then
+if ${_opt_skip_reboot} ; then
   echo "*** Skipping system reboot of instance ID ${INSTANCE_ID} as requested via --skip-reboot ***"
 else
-  ssh -o "ServerAliveInterval=10" -o "ServerAliveCountMax=1" -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@$HOSTNAME" "sudo reboot"
+  ssh -o "ServerAliveInterval=10" -o "ServerAliveCountMax=1" -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@${HOSTNAME}" "sudo reboot"
   retry=120 # up to 10 minutes
   STATUS=""
-  while [ "$STATUS" != "running" ] && [ $retry -ne 0 ] ; do
-    STATUS="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id="$INSTANCE_ID" | awk '/^INSTANCE/ {print $6}')"
+  while [ "${STATUS}" != "running" ] && [ ${retry} -ne 0 ] ; do
+    STATUS="$(aws ec2 describe-instances --region ${AWS_REGION} --filter "Name=instance-id,Values=${INSTANCE_ID}" | jq -r '.Reservations[].Instances[].State.Name')"
     retry=$((retry - 1))
-    echo "Instance ID not yet running (status: ${STATUS}), checking again in 5 seconds ($retry retries left)."
+    echo "Instance ID not yet running (status: ${STATUS}), checking again in 5 seconds (${retry} retries left)."
     sleep 5
   done
 
-  if [ "$STATUS" != "running" ] ; then
+  if [ "${STATUS}" != "running" ] ; then
     echo "No further retries left and couldn't finish reboot of instance ID ${INSTANCE_ID}, giving up." >&2
     bailout 1
   fi
 
   # we probably have a new hostname after reboot
-  HOSTNAME="$(ec2-describe-instances --region ${AWS_REGION} --filter instance-id="$INSTANCE_ID" | awk '/INSTANCE/ {print $4}')"
+  HOSTNAME="$(aws ec2 describe-instances --region ${AWS_REGION} --filter "Name=instance-id,Values=${INSTANCE_ID}" | jq -r '.Reservations[].Instances[] | {PublicDnsName} | [.[]] | .[0]')"
 
   # now check for available ssh connection and nginx listening on port 1443
   retry=120 # up to 10 minutes
   STATUS=""
-  while [ "$STATUS" != "ok" ] && [ $retry -ne 0 ] ; do
-    ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@$HOSTNAME" "sudo lsof -i -n -P  | grep -q '.*:1443 (LISTEN)'"
+  while [ "${STATUS}" != "ok" ] && [ ${retry} -ne 0 ] ; do
+    ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@${HOSTNAME}" "sudo lsof -i -n -P  | grep -q '.*:1443 (LISTEN)'"
     if [ $? -eq 0 ] ; then
       STATUS=ok
     else
       retry=$((retry - 1))
-      echo "Host $HOSTNAME can't be reached via ssh login yet or nginx not listening on port 1443."
-      echo "Retrying ssh access and checking port 1443 LISTEN state in 5 seconds ($retry retries left)."
+      echo "Host ${HOSTNAME} can't be reached via ssh login yet or nginx not listening on port 1443."
+      echo "Retrying ssh access and checking port 1443 LISTEN state in 5 seconds (${retry} retries left)."
       sleep 5
     fi
   done
 
-  if [ "$STATUS" != "ok" ] ; then
-    echo "Host $HOSTNAME can't be reached via ssh or port 1443 not in state LISTEN, giving up." >&2
+  if [ "${STATUS}" != "ok" ] ; then
+    echo "Host ${HOSTNAME} can't be reached via ssh or port 1443 not in state LISTEN, giving up." >&2
     bailout 1
   fi
 fi
 
-remove_ami "$AWS_REGION" "$AMI_NAME" || bailout 1
+remove_ami "${AWS_REGION}" "${AMI_NAME}" || bailout 1
 
 echo "*** Getting rid of all authorized_keys files. ***"
-ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@$HOSTNAME" \
+ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@${HOSTNAME}" \
   'sudo find / -name authorized_keys -exec rm -f {} \;'
 
 LOGFILE_AMI=$(mktemp)
-ec2-create-image --region "$AWS_REGION" \
-     --name "$AMI_NAME" \
-     --description "$AMI_DESCRIPTION" \
-     "$INSTANCE_ID" >"$LOGFILE_AMI"
+aws ec2 create-image                  \
+     --region "${AWS_REGION}"           \
+     --name "${AMI_NAME}"               \
+     --description "${AMI_DESCRIPTION}" \
+     --instance-id "${INSTANCE_ID}"     \
+     > "${LOGFILE_AMI}"
 
-AMI_ID="$(awk '/^IMAGE/ {print $2}' "$LOGFILE_AMI")"
+AMI_ID=$(jq -r '.ImageId' "${LOGFILE_AMI}")
+
+if [ -n "${AMI_ID}" ] ; then
+  echo "Received AMI ID ${AMI_ID}, now waiting until AMI is available."
+else
+  echo "Error creating AMI :(" >&2
+  cat "${LOGFILE_AMI}" >&2
+  bailout 1
+fi
 
 retry=120 # up to 10 minutes
 STATUS=""
-while [ "$STATUS" != "available" ] && [ $retry -ne 0 ] ; do
-  STATUS="$(ec2-describe-images --region ${AWS_REGION} "$AMI_ID" | awk '/^IMAGE/ {print $5}')"
+while [ "${STATUS}" != "available" ] && [ ${retry} -ne 0 ] ; do
+  STATUS="$(aws ec2 describe-images --region "${AWS_REGION}" --image-ids "${AMI_ID}" | jq -r '.Images[].State')"
 
-  if [ "$STATUS" = "failed" ] ; then
-    echo "Fatal error while creating AMI ID $AMI_ID (status: ${STATUS}), exiting." >&2
+  if [ "${STATUS}" = "failed" ] ; then
+    echo "Fatal error while creating AMI ID ${AMI_ID} (status: ${STATUS}), exiting." >&2
     bailout 1
   fi
 
   retry=$((retry - 1))
-  echo "AMI ID $AMI_ID not yet finished (status: ${STATUS}), checking again in 5 seconds ($retry retries left)."
+  echo "AMI ID ${AMI_ID} not yet finished (status: ${STATUS}), checking again in 5 seconds (${retry} retries left)."
   sleep 5
 done
 
-if [ "$STATUS" != "available" ] ; then
+if [ "${STATUS}" != "available" ] ; then
   echo "No further retries left and couldn't finish creation of AMI ID ${AMI_ID} for instance ID ${INSTANCE_ID}, giving up." >&2
   bailout 1
 fi
 
-if [ -n "$AMI_ID" ] ; then
-  echo "Successfully created AMI with ID $AMI_ID"
-else
-  echo "Error creating AMI :(" >&2
-  cat "$LOGFILE_AMI" >&2
-  bailout 1
-fi
+echo "Successfully created AMI with ID ${AMI_ID}"
 
-if $_opt_copy_to_all_regions ; then
-  copy_ami "$AWS_REGION" "$AMI_ID" "$AMI_NAME" "$AMI_DESCRIPTION" || bailout 1
-fi
-
-if $_opt_public ; then
+if ${_opt_public} ; then
   echo "Marking AMI as public"
-  ec2-modify-image-attribute --region "$AWS_REGION" "$AMI_ID" --launch-permission -a all
+  aws ec2 modify-image-attribute --region "${AWS_REGION}" --image-id "${AMI_ID}" --launch-permission "Add=[{Group=all}]"
   if [ $? -ne 0 ] ; then
-    echo "Noticed problem when trying to mark AMI with ID $AMI_ID as public." >&2
+    echo "Noticed problem when trying to mark AMI with ID ${AMI_ID} as public." >&2
     bailout 1
   fi
 fi
 
+if ${_opt_copy_to_all_regions} ; then
+  copy_ami "${AWS_REGION}" "${AMI_ID}" "${AMI_NAME}" "${AMI_DESCRIPTION}" || bailout 1
+fi
+
 echo "*** Debugging information ***"
 echo "--- user-data-file ---"
-cat "$USER_DATA_FILE"
+cat "${USER_DATA_FILE}"
 
 echo "--- log file for instance run ---"
-cat "$LOGFILE_RUN"
+cat "${LOGFILE_RUN}"
 
 echo "--- log file for AMI creation ---"
-cat "$LOGFILE_AMI"
+cat "${LOGFILE_AMI}"
 echo "*** End of Debugging information ***"
 
 echo
 echo "*** Status report for AMI ***
-AWS region:       $AWS_REGION
-AMI ID:           $AMI_ID
-AMI name:         $AMI_NAME
-AMI description:  $AMI_DESCRIPTION
-AMI public:       $_opt_public
-Instance type:    $INSTANCE_TYPE
-NGCP version:     $NGCP_VERSION
+AWS region:       ${AWS_REGION}
+AMI ID:           ${AMI_ID}
+AMI name:         ${AMI_NAME}
+AMI description:  ${AMI_DESCRIPTION}
+AMI public:       ${_opt_public}
+Instance type:    ${INSTANCE_TYPE}
+NGCP version:     ${NGCP_VERSION}
 *** End of Status report ***"
 
 if [ -r ec2_report_amis.txt ] ; then
@@ -651,8 +681,8 @@ if [ -r ec2_report_amis.txt ] ; then
 fi
 
 # Jenkins setup specific
-TESTHOST="$HOSTNAME"
-case "$NGCP_RELEASE" in
+TESTHOST="${HOSTNAME}"
+case "${NGCP_RELEASE}" in
   latest)
     VMVERSION="trunk"
     ;;
@@ -664,4 +694,4 @@ esac
 
 generate_ec2_report
 
-rm -f "$USER_DATA_FILE" "$LOGFILE_RUN" "$LOGFILE_AMI"
+rm -f "${USER_DATA_FILE}" "${LOGFILE_RUN}" "${LOGFILE_AMI}"
