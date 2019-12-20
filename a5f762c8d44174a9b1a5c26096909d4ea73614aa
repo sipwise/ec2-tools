@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "d9063ca9_c448ef15",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 19,
+      "author": {
+        "id": 1000042
+      },
+      "writtenOn": "2019-12-20T17:26:32Z",
+      "side": 1,
+      "message": "You don\u0027t need to disassociate them now, but I think that it\u0027s better to separate them when the reviews are long-ish.",
+      "range": {
+        "startLine": 19,
+        "startChar": 10,
+        "endLine": 19,
+        "endChar": 68
+      },
+      "revId": "a5f762c8d44174a9b1a5c26096909d4ea73614aa",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "35eaaa35_146d7a6c",
+        "filename": "/COMMIT_MSG",
+        "patchSetId": 3
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1000042
+      },
+      "writtenOn": "2019-12-20T17:26:32Z",
+      "side": 1,
+      "message": "regions",
+      "range": {
+        "startLine": 22,
+        "startChar": 40,
+        "endLine": 22,
+        "endChar": 48
+      },
+      "revId": "a5f762c8d44174a9b1a5c26096909d4ea73614aa",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": true
+    }
+  ]
+}
