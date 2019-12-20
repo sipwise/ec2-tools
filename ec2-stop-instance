@@ -1,14 +1,6 @@
 #!/bin/bash
 
-export EC2_HOME="/usr/share/ec2/ec2-api-tools"
-export JAVA_HOME="$(dirname $(dirname $(readlink /etc/alternatives/java)))"
-export PATH="$PATH:${EC2_HOME}/bin"
 export TZ="UTC"
-
-# retrieve AWS_* environment variables
-if [ -r "$HOME/.ec2-create-ngcp" ] ; then
-  source "$HOME/.ec2-create-ngcp"
-fi
 
 usage() {
   echo "$0 - script to stop the specified EC2 instance ID
@@ -29,14 +21,13 @@ Supported OPTIONS:
 
 CMDLINE_OPTS=help,instance-id:,region:,terminate
 
-_opt_temp=$(getopt --name $0 -o +bch --long $CMDLINE_OPTS -- "$@")
+_opt_temp=$(getopt --name "$0" -o +bch --long ${CMDLINE_OPTS} -- "$@")
 if [ $? -ne 0 ]; then
   echo "Try '$0 --help' for more information." >& 2
   exit 1
 fi
-eval set -- "$_opt_temp"
+eval set -- "${_opt_temp}"
 
-_opt_public=false
 _opt_terminate=false
 
 while :; do
@@ -65,51 +56,41 @@ while :; do
 done
 
 # if unset set sane defaults
-[ -n "$AWS_REGION" ] || AWS_REGION="eu-west-1"
-
-if [ -z "$AWS_ACCESS_KEY" ] ; then
-  echo "AWS_ACCESS_KEY is unset, can not continue." >&2
-  exit 1
-fi
-
-if [ -z "$AWS_SECRET_KEY" ] ; then
-  echo "AWS_SECRET_KEY is unset, can not continue." >&2
-  exit 1
-fi
+[ -n "${AWS_REGION}" ] || AWS_REGION="eu-west-1"
 
 check4progs(){
   local RC=''
-  for arg in $* ; do
-    which $arg >/dev/null 2>&1 || RC="$arg"
+  for arg in "$@" ; do
+    which "${arg}" >/dev/null 2>&1 || RC="${arg}"
   done
-  if [ -n "$RC" ] ; then
-    echo "$RC not found/executable" >&2
+  if [ -n "${RC}" ] ; then
+    echo "${RC} not found/executable" >&2
     return 1
   fi
 }
 
-if ! check4progs ec2-stop-instances ; then
-  echo "Required tools not found, forgot to install ec2-api-tools?" >&2
+if ! check4progs aws ; then
+  echo "Required tool aws not found, forgot to install awscli?" >&2
   exit 1
 fi
 
-if [ -z "$INSTANCE_ID" ] ; then
+if [ -z "${INSTANCE_ID}" ] ; then
   usage >&2
   exit 1
 fi
 
-if $_opt_terminate ; then
-  echo "Terminating instance ID $INSTANCE_ID (as requested via --terminate)"
-  ec2-terminate-instances --region "$AWS_REGION" "$INSTANCE_ID"
+if ${_opt_terminate} ; then
+  echo "Terminating instance ID ${INSTANCE_ID} (as requested via --terminate)"
+  aws ec2 terminate-instances --region "${AWS_REGION}" --instance-ids "${INSTANCE_ID}"
   if [ $? -ne 0 ] ; then
-    echo "Noticed problem when trying to terminate instance with ID $INSTANCE_ID" >&2
+    echo "Noticed problem when trying to terminate instance with ID ${INSTANCE_ID}" >&2
     exit 1
   fi
 else
-  echo "Stopping Instance ID $INSTANCE_ID"
-  ec2-stop-instances --region "$AWS_REGION" "$INSTANCE_ID"
+  echo "Stopping Instance ID ${INSTANCE_ID}"
+  aws ec2 stop-instances --region "${AWS_REGION}" --instance-ids "${INSTANCE_ID}"
   if [ $? -ne 0 ] ; then
-    echo "Noticed problem when trying to stop instance with ID $INSTANCE_ID" >&2
+    echo "Noticed problem when trying to stop instance with ID ${INSTANCE_ID}" >&2
     exit 1
   fi
 fi
