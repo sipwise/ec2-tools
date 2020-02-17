@@ -199,6 +199,37 @@ remove_ami() {
   fi
 }
 
+wait_for_ssh() {
+  local max_attempt=360
+  local attempt=0
+
+  while [[ "${attempt}" -lt "${max_attempt}" ]]; do
+    if ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@${HOSTNAME}" exit; then
+      return
+    fi
+    sleep 1
+    attempt=$((attempt + 1))
+  done
+
+  return 1
+}
+
+wait_for_configuration() {
+  local max_attempt=360
+  local attempt=0
+
+  while [[ "${attempt}" -lt "${max_attempt}" ]]; do
+    if ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@${HOSTNAME}" \
+      "grep -q 'System was successfully configured, now you have the best VoIP software.' /var/log/ngcp-installer.log"; then
+      return
+    fi
+    sleep 1
+    attempt=$((attempt + 1))
+  done
+
+  return 1
+}
+
 CMDLINE_OPTS=allocation-id:,ami-name:,base-ami:,copy-to-all-regions,elastic-ip:,help,installer-url:,instance-type:,keep-ami-snapshot,ngcp-release:,public,region:,remove-existing-ami,subnet:,skip-reboot
 
 _opt_temp=$(getopt --name "$0" -o +bch --long ${CMDLINE_OPTS} -- "$@")
@@ -429,7 +460,7 @@ sed_regexp=''
 sed_regexp+='s/^(export FORCE)=.+$/\1=yes/;'
 sed_regexp+='s/^(export DHCP)=.+$/\1=true/;'
 sed -ri "\${sed_regexp}" /etc/ngcp-installer/config_deploy.inc
-ngcp-installer && screen -dm bash -c 'ngcp-initial-configuration'
+ngcp-installer
 attempt=0
 max_attempt=1000
 rc=1
@@ -522,7 +553,7 @@ retry=360 # up to 30 minutes
 FINISHED_NGCP_CE_INSTALLATION=false
 grep_cmd="grep -q 'Installation finished. Thanks for choosing NGCP' /var/log/ngcp-installer-debug.log"
 if "${init_configuration}" ; then
-  grep_cmd="grep -q 'System was successfully configured, now you have the best VoIP software.' /var/log/ngcp-installer.log"
+  grep_cmd="grep -q 'Installation finished. Thanks for choosing' /var/log/ngcp-installer.log"
 fi
 while [ "${FINISHED_NGCP_CE_INSTALLATION}" != "true" ] && [ ${retry} -ne 0 ] ; do
   # shellcheck disable=SC2029
@@ -572,6 +603,14 @@ else
 
   # we probably have a new hostname after reboot
   HOSTNAME="$(aws ec2 describe-instances --region ${AWS_REGION} --filter "Name=instance-id,Values=${INSTANCE_ID}" | jq -r '.Reservations[].Instances[] | {PublicDnsName} | [.[]] | .[0]')"
+
+  if "${init_configuration}"; then
+    echo "Waiting for ssh access..."
+    wait_for_ssh
+    echo "Configuring system..."
+    ssh -o "StrictHostKeyChecking=no" -o "UserKnownHostsFile=/dev/null" -i "${KEY_FILE}" "admin@${HOSTNAME}" "screen -dm bash -c 'ngcp-initial-configuration'"
+    wait_for_configuration
+  fi
 
   # now check for available ssh connection and nginx listening on port 1443
   retry=120 # up to 10 minutes
