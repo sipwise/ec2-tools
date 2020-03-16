@@ -680,8 +680,13 @@ while [[ "${STATUS}" != "ok" && "${retry}" -ne 0 ]] && "${success}"; do
   fi
 done
 
-if [ "${STATUS}" != "ok" ] ; then
-  echo "Host ${HOSTNAME} can't be reached via ssh or port 1443 not in state LISTEN, giving up." >&2
+if [[ "${STATUS}" != "ok" ]] ; then
+  if ! ssh_wrapper "uname -a &>/dev/null" ; then
+    echo "Host ${HOSTNAME} can't be reached via ssh, giving up." >&2
+  else
+    echo "Host ${HOSTNAME} does not seem to LISTEN on port 1443, will attempt to show status of nginx:" >&2
+    ssh_wrapper "systemctl status nginx"
+  fi
   bailout 1
 fi
 
