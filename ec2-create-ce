@@ -230,7 +230,7 @@ wait_for_ssh() {
 }
 
 get_status() {
-   case "${vmversion}" in
+   case "${NGCP_VERSION}" in
     2.*|3.*|mr[3-6].*|mr7.[0-4]*)
       if ssh_wrapper "grep 'System configured' -q /etc/sipwise_ngcp_version"; then
         echo "finished"
