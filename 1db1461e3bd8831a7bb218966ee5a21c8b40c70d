@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "633b2c4d_0f591184",
+        "filename": "ec2-create-ce",
+        "patchSetId": 2
+      },
+      "lineNbr": 684,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2020-03-17T07:58:22Z",
+      "side": 1,
+      "message": "Maybe either keep it simple like just \"uname\" (no need for `-a`) if we redirect everything to /dev/null, or let\u0027s use the output if it is of any use for us?",
+      "revId": "1db1461e3bd8831a7bb218966ee5a21c8b40c70d",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "45d74803_e087cc8d",
         "filename": "ec2-create-ce",
         "patchSetId": 2
@@ -13,6 +30,24 @@
       "writtenOn": "2020-03-17T07:33:06Z",
       "side": 1,
       "message": "port 1443 it is nginx+ngcp-panel as fastcgi, could be both related, usually problem in ngcp-panel :-(",
+      "revId": "1db1461e3bd8831a7bb218966ee5a21c8b40c70d",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "c41c5b06_38fb1d21",
+        "filename": "ec2-create-ce",
+        "patchSetId": 2
+      },
+      "lineNbr": 688,
+      "author": {
+        "id": 1000000
+      },
+      "writtenOn": "2020-03-17T07:58:22Z",
+      "side": 1,
+      "message": "Yeah, usually it\u0027s a problem with either nginx OR ngcp-panel.\nI don\u0027t mind listing their status with something like:\n\n  systemctl status nginx ngcp-panel\n\nor maybe even \"systemctl --failed\", but I don\u0027t really understand the code here, given that \"ssh_wrapper uname\" fails, why should \"ssh_wrapper systemctl ...\" work then?",
+      "parentUuid": "45d74803_e087cc8d",
       "revId": "1db1461e3bd8831a7bb218966ee5a21c8b40c70d",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": true
