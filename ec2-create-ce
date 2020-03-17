@@ -63,6 +63,8 @@ ssh_wrapper() {
   # shellcheck disable=SC2029
   ssh -o "ServerAliveInterval 10" \
     -o "ConnectTimeout 15" \
+    -o "ControlMaster=no" \
+    -o "ControlPath=none" \
     -o "StrictHostKeyChecking=no" \
     -o "UserKnownHostsFile=/dev/null" \
     -i "${KEY_FILE}" \
