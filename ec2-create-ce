@@ -114,7 +114,7 @@ copy_ami() {
 
   local target_region
   for target_region in \
-    eu-west-1 \
+    eu-west-1
   do
     case "${target_region}" in
       "${source_region}")
