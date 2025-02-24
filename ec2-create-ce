@@ -453,6 +453,12 @@ if [ -f /etc/apt/sources.list.d/backports.list ] && grep -q 'jessie-backports' /
   rm -f /etc/apt/sources.list.d/backports.list
 fi
 
+# workaround for mr13.2.1 and newer with bookworm-backports enabled by default:
+if [ -f /etc/apt/sources.list.d/debian.sources ] && grep -q '-backports' /etc/apt/sources.list.d/debian.sources ; then
+  echo "backports is unexpected, disabling from /etc/apt/sources.list.d/debian.sources"
+  sed -i -E 's/ [a-z]+-backports//' /etc/apt/sources.list.d/debian.sources
+fi
+
 if [ "${SYSTEMD_SUPPORT}" = "false" ] && [ -d /run/systemd/system ] ; then
   echo "Switching from systemd to sysvinit (pre-reboot)"
   apt update
